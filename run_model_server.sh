@@ -8,8 +8,11 @@ python train.py --experiment_name nuevo/expe29/AEC/cris_mediapipe_AEC_lr_0.001 -
 
 python train.py --experiment_name nuevo/expe71/PUCP/cris_wholepose_PUCP_lr_0.0005 --training_set_path ../../joe/ConnectingPoints/split/PUCP_PSL_DGI156--wholepose-Train.hdf5 --validation_set_path ../../joe/ConnectingPoints/split/PUCP_PSL_DGI156--wholepose-Val.hdf5  --testing_set_path ../../joe/ConnectingPoints/split/PUCP_PSL_DGI156--wholepose-Val.hdf5 --hidden_dim 142 --num_classes 29 --epochs 3 --keypoints_model wholepose --lr 0.0005 --keypoints_number 71
 python train.py --experiment_name nuevo/expe29/PUCP/cris_wholepose_PUCP_lr_0.0005 --training_set_path ../../joe/ConnectingPoints/split/PUCP_PSL_DGI156--wholepose-Train.hdf5 --validation_set_path ../../joe/ConnectingPoints/split/PUCP_PSL_DGI156--wholepose-Val.hdf5  --testing_set_path ../../joe/ConnectingPoints/split/PUCP_PSL_DGI156--wholepose-Val.hdf5 --hidden_dim 58 --num_classes 29 --epochs 3 --keypoints_model wholepose --lr 0.0005 --keypoints_number 29
-'''
 
+python3 train_wandb.py --training_set_path /data/shuaman/psl_gan/Data/landmarks/AEC--wholepose-Train.hdf5 --testing_set_path /data/shuaman/psl_gan/Data/landmarks/AEC--wholepose-Val.hdf5 --validation_set_path /data/shuaman/psl_gan/Data/landmarks/AEC--wholepose-Val.hdf5
+
+'''
+MULTI_GPU=1 CUDA_VISIBLE_DEVICES=0,1,2,3 nohup python3 train.py --experimentation --num_logs 6 --wandb > exp_wlasl_29.log &
 ############################
 python train.py --experiment_name nuevo/final_baneado_71/WLASL/cris_wholepose_WLASL_lr_0.002 --training_set_path ../../joe/ConnectingPoints/split/WLASL--wholepose-Train.hdf5 --validation_set_path ../../joe/ConnectingPoints/split/WLASL--wholepose-Val.hdf5  --testing_set_path ../../joe/ConnectingPoints/split/WLASL--wholepose-Val.hdf5 --hidden_dim 142 --num_classes 86 --epochs 200 --keypoints_model wholepose --lr 0.002 --keypoints_number 71
 python train.py --experiment_name nuevo/final_baneado_71/WLASL/cris_mediapipe_WLASL_lr_0.002 --training_set_path ../../joe/ConnectingPoints/split/WLASL--mediapipe-Train.hdf5 --validation_set_path ../../joe/ConnectingPoints/split/WLASL--mediapipe-Val.hdf5  --testing_set_path ../../joe/ConnectingPoints/split/WLASL--mediapipe-Val.hdf5 --hidden_dim 142 --num_classes 86 --epochs 200 --keypoints_model mediapipe --lr 0.002 --keypoints_number 71

@@ -8,3 +8,4 @@ torchvision --extra-index-url https://download.pytorch.org/whl/cu113
 h5py
 seaborn
 torchmetrics
+wandb==0.13.2

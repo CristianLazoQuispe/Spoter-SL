@@ -31,6 +31,43 @@ def create_folder(directory):
         os.makedirs(directory)
 
 
+def get_metrics_epoch_zero(model, train_loader,
+                        val_loader,
+                        eval_loader,
+                        criterion,
+                        device,
+                        keypoints_model=""):
+    model.train(False)
+    pred_correct, pred_all = 0, 0
+    running_loss = 0
+    for i, data in enumerate(train_loader):
+        inputs, labels = data
+        inputs = inputs.squeeze(0).to(device)
+        labels = labels.to(device, dtype=torch.long)
+        outputs = model(inputs).expand(1, -1, -1)
+        loss = criterion(outputs[0], labels[0])
+        running_loss += loss    
+        # Statistics
+        if int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2))) == int(labels[0][0]):
+            pred_correct += 1
+        pred_all += 1
+
+    _, _, val_acc = evaluate(model, val_loader, device)    
+    _, _, eval_acc = evaluate(model, eval_loader, device)
+    _, _, eval_acctop5 = evaluate_top_k(model, eval_loader, device, k=5)
+
+    metrics_log = {
+        "train_loss" if keypoints_model=="" else f"train_loss-{keypoints_model}": running_loss,
+        "train_acc" if keypoints_model=="" else f"train_acc-{keypoints_model}": (pred_correct / pred_all),
+        "val_acc" if keypoints_model=="" else f"val_acc-{keypoints_model}": val_acc,
+        "eval_acc" if keypoints_model=="" else f"eval_acc-{keypoints_model}": eval_acc,
+        "eval_acctop5" if keypoints_model=="" else f"eval_acctop5-{keypoints_model}": eval_acctop5,
+        "max_eval_acc" if keypoints_model=="" else f"max_eval_acc-{keypoints_model}": eval_acc,
+        "max_eval_acc_top5" if keypoints_model=="" else f"max_eval_acc_top5-{keypoints_model}": eval_acctop5
+    }
+
+    return metrics_log
+
 def train_epoch(model, dataloader, criterion, optimizer, device, scheduler=None):
 
     pred_correct, pred_all = 0, 0
@@ -69,17 +106,20 @@ def train_epoch(model, dataloader, criterion, optimizer, device, scheduler=None)
     return running_loss, pred_correct, pred_all, (pred_correct / pred_all)
 
 
-def evaluate(model, dataloader, device, print_stats=False):
+def evaluate(model, dataloader, criterion, device, print_stats=False):
 
     pred_correct, pred_all = 0, 0
     stats = {i: [0, 0] for i in range(101)}
-
+    running_loss = 0.0
     for i, data in enumerate(dataloader):
         inputs, labels = data
         inputs = inputs.squeeze(0).to(device)
         labels = labels.to(device, dtype=torch.long)
 
         outputs = model(inputs).expand(1, -1, -1)
+
+        loss = criterion(outputs[0], labels[0])
+        running_loss += loss    
 
         # Statistics
         if int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2))) == int(labels[0][0]):
@@ -96,7 +136,7 @@ def evaluate(model, dataloader, device, print_stats=False):
         logging.info("Label accuracies statistics:")
         logging.info(str(stats) + "\n")
 
-    return pred_correct, pred_all, (pred_correct / pred_all)
+    return running_loss, pred_correct, pred_all, (pred_correct / pred_all)
 
 def my_evaluate(model,train_set,train_loader,eval_loader,device,experiment_name,print_stats=False):
     
@@ -322,7 +362,7 @@ def evaluate_top_k(model, dataloader, device, k=5):
 
         outputs = model(inputs).expand(1, -1, -1)
 
-        if int(labels[0][0]) in torch.topk(outputs, k).indices.tolist():
+        if int(labels[0][0]) in torch.topk(torch.reshape(outputs, (-1,)), k).indices.tolist():
             pred_correct += 1
 
         pred_all += 1
