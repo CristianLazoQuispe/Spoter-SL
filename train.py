@@ -31,14 +31,14 @@ os.environ["WANDB_API_KEY"] = '8b48ee67f7df4cbf2d665be5b5ef80c049487f57'
 def get_default_args():
     parser = argparse.ArgumentParser(add_help=False)
 
-    parser.add_argument("--experiment_name", type=str, default="AEC_DGI305",
+    parser.add_argument("--experiment_name", type=str, default="DGI305-AEC-sweep",
                         help="Name of the experiment after which the logs and plots will be named")
     parser.add_argument("--num_classes", type=int, default=38, help="Number of classes to be recognized by the model")
     parser.add_argument("--seed", type=int, default=379,
                         help="Seed with which to initialize all the random components of the training")
 
     # Data
-    parser.add_argument("--training_set_path", type=str, default="", help="Path to the training dataset CSV file")
+    parser.add_argument("--training_set_path", type=str, default="../ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe-Train.hdf5", help="Path to the training dataset CSV file")
     parser.add_argument("--testing_set_path", type=str, default="", help="Path to the testing dataset CSV file")
     parser.add_argument("--experimental_train_split", type=float, default=None,
                         help="Determines how big a portion of the training set should be employed (intended for the "
@@ -49,7 +49,7 @@ def get_default_args():
     parser.add_argument("--validation_set_size", type=float,
                         help="Proportion of the training set to be split as validation set, if 'validation_size' is set"
                              " to 'split-from-train'")
-    parser.add_argument("--validation_set_path", type=str, default="", help="Path to the validation dataset CSV file")
+    parser.add_argument("--validation_set_path", type=str, default="../ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe-Val.hdf5", help="Path to the validation dataset CSV file")
 
     # Training hyperparameters
     parser.add_argument("--epochs", type=int, default=100, help="Number of epochs to train the model for")
@@ -189,7 +189,10 @@ def train(args):
     # RETRIEVE TRAINING
     if args.continue_training:
 
-        slrt_model = SPOTER(num_classes=args.num_classes, hidden_dim=args.hidden_dim)
+        slrt_model = SPOTER(num_classes=args.num_classes, num_rows=args.num_rows,
+                            hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
+                            num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
+                            dim_feedforward=args.dim_feedforward)
         checkpoint = torch.load(args.continue_training)
         slrt_model.load_state_dict(checkpoint['model_state_dict'])
         sgd_optimizer = optim.SGD(slrt_model.parameters(), lr=args.lr)
@@ -198,7 +201,10 @@ def train(args):
 
     # TRANSFER LEARNING
     elif args.transfer_learning:
-        slrt_model = SPOTER(num_classes=100, hidden_dim=args.hidden_dim)
+        slrt_model = SPOTER(num_classes=100, num_rows=args.num_rows,
+                            hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
+                            num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
+                            dim_feedforward=args.dim_feedforward)
         checkpoint = torch.load(args.transfer_learning)
         slrt_model.load_state_dict(checkpoint['model_state_dict'])
 
@@ -216,7 +222,11 @@ def train(args):
 
     # Normal scenario
     else:
-        slrt_model = SPOTER(num_classes=args.num_classes, hidden_dim=args.hidden_dim)
+        slrt_model = SPOTER(num_classes=args.num_classes, num_rows=args.num_rows,
+                            hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
+                            num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
+                            dim_feedforward=args.dim_feedforward)
+        
         sgd_optimizer = optim.SGD(slrt_model.parameters(), lr=args.lr)
     # Construct the model
         

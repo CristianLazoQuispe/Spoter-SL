@@ -4,9 +4,7 @@
 ## Run model 
 
     
-    python train.py --training_set_path ../ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe-Train.hdf5 --validation_set_path ../ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe-Val.hdf5 --epoch 1 --experiment_name DGI305-AEC --lr 0.01 --device 0
-
-
+    python train.py --epoch 1 --experiment_name DGI305-AEC --lr 0.01 --num_rows 64 --hidden_dim 108 --num_heads 9 --num_layers_1 6 --num_layers_2 6 --dim_feedforward 256
 
 ## Run model in background
 

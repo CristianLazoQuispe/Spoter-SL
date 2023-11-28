@@ -1,0 +1,19 @@
+program: train.py
+method: grid
+parameters:
+  epoch:
+    values: [3]
+  lr:
+    values: [0.01]
+  num_rows:
+    values: [1] # [64,32,16,8,4,2,1]
+  hidden_dim:
+    values: [108]
+  num_heads:
+    values: [1] # [27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim
+  num_layers_1:
+    values: [1] # [64,12,8,6,4,2,1]
+  num_layers_2:
+    values: [4] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers
+  dim_feedforward:
+    values: [256,128,64,12,8,6,2,1] #

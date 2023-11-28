@@ -47,8 +47,9 @@ class SPOTER(nn.Module):
     def __init__(self, num_classes, num_rows=64,hidden_dim=108, num_heads=9, num_layers_1=6, num_layers_2=6, dim_feedforward=256):
         super().__init__()
 
-        self.row_embed = nn.Parameter(torch.rand(num_rows, hidden_dim))
-        self.pos = nn.Parameter(torch.cat([self.row_embed[0].unsqueeze(0).repeat(1, 1, 1)], dim=-1).flatten(0, 1).unsqueeze(0))
+        self.row_embed_aux = nn.Parameter(torch.rand(1, hidden_dim))
+        
+        self.pos = nn.Parameter(torch.cat([self.row_embed_aux[0].unsqueeze(0).repeat(1, 1, 1)], dim=-1).flatten(0, 1).unsqueeze(0))
         self.class_query = nn.Parameter(torch.rand(1, hidden_dim))
         self.transformer = nn.Transformer(hidden_dim, num_heads, num_layers_1, num_layers_2)
         self.linear_class = nn.Linear(hidden_dim, num_classes)
@@ -59,6 +60,7 @@ class SPOTER(nn.Module):
         print("=="*30)
         print("=="*30)
         print("=="*30)
+        print("self.row_embed_aux[0]=",self.row_embed_aux[0])
         print("self.transformer.decoder.num_layers=",self.transformer.decoder.num_layers)
         print("=="*30)
         print("=="*30)
