@@ -52,20 +52,22 @@ def get_default_args():
     parser.add_argument("--validation_set_path", type=str, default="../ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe-Val.hdf5", help="Path to the validation dataset CSV file")
 
     # Training hyperparameters
-    parser.add_argument("--epochs", type=int, default=100, help="Number of epochs to train the model for")
+    parser.add_argument("--epochs", type=int, default=2000, help="Number of epochs to train the model for")
     parser.add_argument("--lr", type=float, default=0.001, help="Learning rate for the model training")
     parser.add_argument("--log_freq", type=int, default=1,
                         help="Log frequency (frequency of printing all the training info)")
 
     ## trainable parameters
     #num_classes, num_rows=64,hidden_dim=108, num_heads=9, num_layers_1=6, num_layers_2=6, dim_feedforward=256)
-    parser.add_argument("--num_rows", type=int, default=64, help="")
+    parser.add_argument("--num_rows", type=int, default=1, help="")
     parser.add_argument("--hidden_dim", type=int, default=108, help="")
     parser.add_argument("--num_heads", type=int, default=9, help="")
     parser.add_argument("--num_layers_1", type=int, default=6, help="")
     parser.add_argument("--num_layers_2", type=int, default=6, help="")
     parser.add_argument("--dim_feedforward", type=int, default=256, help="")
 
+    parser.add_argument("--early_stopping_patience", type=int, default=20, help="")
+    parser.add_argument("--max_acc_difference", type=float, default=0.4, help="")
 
     # Checkpointing
     parser.add_argument("--save_checkpoints", type=bool, default=True,
@@ -308,6 +310,12 @@ def train(args):
     slrt_model.train(True)
     slrt_model.to(device)
 
+
+    best_val_max_acc = -1#float('inf')
+    epochs_distance_without_improvement = 0
+    epochs_without_improvement = 0
+
+
     for epoch in range(epoch_start, args.epochs):
 
         #sgd_optimizer = lr_lambda(epoch, sgd_optimizer)
@@ -332,7 +340,28 @@ def train(args):
                 'epoch': epoch
             })
 
+            if val_acc > best_val_max_acc:
+                best_val_max_acc = val_acc
+                epochs_without_improvement = 0
+            else:
+                epochs_without_improvement += 1
+            # Check for early stopping based on the difference between training and validation loss
+            acc_difference = np.abs(train_acc - best_val_max_acc)
 
+            if acc_difference > args.max_acc_difference:
+                epochs_distance_without_improvement+=1
+            else:
+                epochs_distance_without_improvement=0
+                
+            if epochs_distance_without_improvement >= args.early_stopping_patience:
+                print(f"Early stopping! Training and validation acc difference exceeded threshold.")
+                break  # Exit the training loop
+
+            if epochs_without_improvement >= args.early_stopping_patience:
+                print(f"Early stopping! No improvement for {args.early_stopping_patience} consecutive epochs.")
+                break  # Exit the training loop
+
+            
         stats = {val_set.inv_dict_labels_dataset[k]:v for k,v in stats.items() if k < args.num_classes}
         
         df_stats = pd.DataFrame(stats.items(), columns=['clase', 'Aciertos_Total'])
