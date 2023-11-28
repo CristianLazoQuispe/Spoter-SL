@@ -1,1 +1,0 @@
-folder where the weights of spoter model will be saved
