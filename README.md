@@ -1,91 +1,31 @@
-![Top Banner](https://data.matsworld.io/signlanguagerecognition/GitHub_banner.png)
-
-> by **[Matyáš Boháček](https://github.com/matyasbohacek)** and **[Marek Hrúz](https://github.com/mhruz)**, University of West Bohemia <br>
-> Should you have any questions or inquiries, feel free to contact us [here](mailto:matyas.bohacek@matsworld.io).
-
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/sign-pose-based-transformer-for-word-level/sign-language-recognition-on-lsa64)](https://paperswithcode.com/sota/sign-language-recognition-on-lsa64?p=sign-pose-based-transformer-for-word-level)
+# Spoter-SL
 
 
-This is a forked version of the original repository created by Matyáš Boháček and is based on the research paper titled "[Sign Pose-based Transformer for Word-level Sign Language Recognition](https://openaccess.thecvf.com/content/WACV2022W/HADCV/html/Bohacek_Sign_Pose-Based_Transformer_for_Word-Level_Sign_Language_Recognition_WACVW_2022_paper.html)." 
+## Run model 
 
-## Research Contributions
-
-In the course of our research using Spoter, we have made several contributions, including the following papers and extended abstract:
-
-- **[Impact of Pose Estimation Models for Landmark-based Sign Language Recognition](https://research.latinxinai.org/papers/neurips/2022/pdf/18_CameraReady.pdf)**
-
-In this paper, we delve into the significance of pose estimation models for landmark-based sign language recognition. We specifically explore the utilization of 29 and 71 landmarks from Mediapipe, Openpose, and RHnet models to input into both the Spoter and a graph-based model. Through our analysis, we conclude that the Mediapipe model in combination with the Spoter model exhibits better compatibility with our dataset. Interestingly, we observe that employing 71 points yields positive outcomes, but subsequent experiments led us to discover that using 54 points actually yields superior results.
-
-- **[Less is More: Techniques to Reduce Overfitting in your Transformer Model for Sign Language Recognition](https://research.latinxinai.org/papers/cvpr/2023/pdf/Joe_Huamani.pdf)**
-
-The strategies detailed in this paper are designed to counter overfitting by making modifications to both the data and the training process. Our findings underscore the effectiveness of employing a combination of the AEC and PUCP305 techniques, which yield notable improvements in our results. Additionally, we highlight the significance of data augmentation, label smoothing, and model complexity reduction in enhancing model generalization. These insights have led us to make certain parameter adjustments to the Spoter model to better balance complexity and performance. 
-
-- **[Impact of Video Length Reduction due to Missing Landmarks on Sign Language Recognition Model](https://research.latinxinai.org/papers/cvpr/2023/pdf/Carlos_Vasquez.pdf)**
-
-This study investigates how shortening videos due to missing landmarks affects the performance of our sign language recognition model. Our research reveals that while reducing video length does result in a slight drop in model performance, we've chosen to retain videos with missing parts in our dataset.
+    
+    python train.py --training_set_path ../ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe-Train.hdf5 --validation_set_path ../ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe-Val.hdf5 --epoch 1 --experiment_name DGI305-AEC --lr 0.01 --device 0
 
 
-Please feel free to explore this repository and the associated papers to gain a deeper understanding of our research and its outcomes.
 
-For any questions, comments, or collaborations, please don't hesitate to get in touch!
+## Run model in background
 
-## Get Started
+https://medium.com/swlh/introduction-to-process-handling-in-cmd-and-using-terminal-multiplexers-for-uninterrupted-bfd1bf2c16c2
 
-First, make sure to install all necessary dependencies using:
+To exit a tmux session, press control and ‘B’ together. Then, press ‘D’ to detach yourself from the session. You can also create sessions with a specific name using the following command:
 
-```shell
-pip install -r requirements.txt
-```
-
-Create an account on [Weights & Biases](https://wandb.ai/) to facilitate experiment tracking and reproducibility. Then please set up your `WANDB_API_KEY` in your environment.
-
-```
-export WANDB_API_KEY=your_api_key_here
-```
-
-To train the model, simply specify the hyperparameters and run the following:
-
-```
-python -m train
-  --experiment_name [str; name of the experiment to name the output logs and plots in WandB]
+    tmux new -s '<name>'
   
-  --epochs [int; number of epochs]
-  --lr [float; learning rate]
+You can list all running tmux sessions using ‘tmux ls’. You can attach your window to a specific session using its name in the following command:
+
+    tmux a -t ‘<name>’
   
-  --training_set_path [str; path to the H5 file with training set's skeletal data]
-  --validation_set_path [str; path to the H5 file with validation set's skeletal data]
-  --device [int; GPU number if GPU is available]
-```
+You can also kill a particular session using the following command:
 
-The hyperparameter modifications made during our research are hardcoded in the repository, so you can directly experiment with the provided hyperparameters.
+    tmux kill-session -t ‘<name>’
 
-## Reproduce our results
 
-To reproduce the results of our you need to download from this [link](https://drive.google.com/drive/folders/1E8uFYai2JVhu1DfwPj5Z7Pr2mqgg_Ype?usp=drive_link) the following files:
+# Run model
 
-* DGI305-AEC--50--mediapipe--Train.hdf5
-* DGI305-AEC--50--mediapipe--Val.hdf5
-* points_54.csv
-
-To obtain these files, please contact us.
-
-## Test the inference
-
-To use the inference, you'll need to download the following files from the same [link](https://drive.google.com/drive/folders/1E8uFYai2JVhu1DfwPj5Z7Pr2mqgg_Ype?usp=drive_link):
-
-* points_54.csv
-* meaning.json
-* spoter-50Classes-68_5Top1acc_87Top5acc.pth
-
-To obtain these files, please contact us.
-
-After obtaining the necessary files, you can run the inference script:
-
-```
-python inference.py
-```
-This will allow you to test the model's performance on new data and see its predictions in action.
-
-## License
-
-The **code** is published under the [Apache License 2.0](https://github.com/matyasbohacek/spoter/blob/main/LICENSE) which allows for both academic and commercial use as presented in the original repository of Matyáš Boháček.
+    
+    sh run_model_server.sh
