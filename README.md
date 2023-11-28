@@ -31,7 +31,9 @@ You can also kill a particular session using the following command:
     tmux kill-session -t ‘<name>’
 
 
-# Run model
+# Run model with sweep
 
     
-    sh run_model_server.sh
+   wandb sweep config.yaml
+   wandb agent ml_projects/Spoter-SL/7ngjr6nx
+
