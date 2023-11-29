@@ -1,46 +1,58 @@
 
+import torch.nn.utils as nn_utils
 import logging
 import torch
 import csv
 import wandb
 import tqdm
 
-def train_epoch(model, dataloader, criterion, optimizer, device, scheduler=None):
+def train_epoch(model, dataloader, criterion, optimizer, device, scheduler=None,clip_grad_max_norm=1.0,epoch=0):
 
-    pred_correct, pred_all = 0, 0
+    k = 5
+    
+    pred_correct, pred_top_5,  pred_all = 0, 0, 0
     running_loss = 0.0
 
     data_length = len(dataloader)
     
     stats = {i: [0, 0] for i in range(302)}
 
-    for i, data in tqdm.tqdm(enumerate(dataloader)):
+    for i, data in tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Train Epoch {epoch + 1}'):
         inputs, labels, _ = data
         inputs = inputs.squeeze(0).to(device)
         labels = labels.to(device, dtype=torch.long)
         if i==0:
             print("labels :",labels)
         optimizer.zero_grad()
+        #outputs = model.forward(inputs,show=(i<5 and epoch==0)).expand(1, -1, -1)
         outputs = model(inputs).expand(1, -1, -1)
 
         loss = criterion(outputs[0], labels[0])
         loss.backward()
+        # Clip gradients to prevent exploding gradients
+        nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
         optimizer.step()
         running_loss += loss
 
         # Statistics
         if int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2))) == int(labels[0][0]):
+            stats[int(labels[0][0])][0] += 1
             pred_correct += 1
+        
+        if int(labels[0][0]) in torch.topk(torch.reshape(outputs, (-1,)), k).indices.tolist():
+            pred_top_5 += 1
+
+        stats[int(labels[0][0])][1] += 1
         pred_all += 1
 
     if scheduler:
         #scheduler.step(running_loss.item() / len(dataloader))
         scheduler.step()
 
-    return running_loss/data_length, pred_correct, pred_all, (pred_correct / pred_all)
+    return running_loss/data_length, pred_correct, pred_all, (pred_correct / pred_all),stats
 
 
-def evaluate(model, dataloader, cel_criterion, device, print_stats=False):
+def evaluate(model, dataloader, cel_criterion, device,epoch=0):
 
     pred_correct, pred_top_5,  pred_all = 0, 0, 0
     running_loss = 0.0
@@ -51,7 +63,7 @@ def evaluate(model, dataloader, cel_criterion, device, print_stats=False):
 
     k = 5 # top 5 (acc)
 
-    for i, data in tqdm.tqdm(enumerate(dataloader)):
+    for i, data in tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Evaludate Epoch {epoch + 1}'):
         inputs, labels, _ = data
         inputs = inputs.squeeze(0).to(device)
         labels = labels.to(device, dtype=torch.long)
@@ -71,13 +83,6 @@ def evaluate(model, dataloader, cel_criterion, device, print_stats=False):
 
         stats[int(labels[0][0])][1] += 1
         pred_all += 1
-
-    if print_stats:
-        stats = {key: value[0] / value[1] for key, value in stats.items() if value[1] != 0}
-        print("Label accuracies statistics:")
-        print(str(stats) + "\n")
-        logging.info("Label accuracies statistics:")
-        logging.info(str(stats) + "\n")
 
     return running_loss/data_length, pred_correct, pred_all, (pred_correct / pred_all), (pred_top_5 / pred_all), stats
 
@@ -213,8 +218,8 @@ def generate_csv_result(run, model, dataloader, folder_path, meaning, device):
     wandb.save(full_path)
 
 
-def generate_csv_accuracy(df_stats, folder_path):
+def generate_csv_accuracy(df_stats, folder_path,name='/accuracy.csv'):
 
-    full_path = folder_path+'/accuracy.csv'
+    full_path = folder_path+name
     df_stats.to_csv(full_path, index=False, encoding='utf-8')
     wandb.save(full_path)

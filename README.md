@@ -3,11 +3,10 @@
 
 ## Run model 
 
-    
-    python train.py --epoch 1 --experiment_name DGI305-AEC --lr 0.01 --num_rows 64 --hidden_dim 108 --num_heads 9 --num_layers_1 6 --num_layers_2 6 --dim_feedforward 256
+    hidden_dim = POINTS*2 = 54*2 = 108
 
 
-    python train.py --epoch 1000 --experiment_name DGI305-AEC --lr 0.1 --num_rows 1 --hidden_dim 54 --num_heads 1 --num_layers_1 1 --num_layers_2 1 --dim_feedforward 1
+    python train.py --epoch 200 --experiment_name 305-aec --lr 0.0001 --num_rows 64 --num_heads 9 --num_layers_1 9 --num_layers_2 9 --dim_feedforward 128
 
 ## Run model in background
 
@@ -29,10 +28,15 @@ You can list all running tmux sessions using ‘tmux ls’. You can attach your 
 You can also kill a particular session using the following command:
 
     tmux kill-session -t ‘<name>’
+    tmux kill-session -t session_01
 
 
 # Run model with sweep
 
-   wandb sweep config.yaml
-   wandb agent ml_projects/Spoter-SL/7ngjr6nx
+    wandb login
+    cd /ruta/a/Spoter-SL  # Cambia esto a la ruta real de tu proyecto
+    wandb init
+
+    wandb sweep config.yaml
+    wandb agent ml_projects/SLR_2023/zdf5fe5t
 

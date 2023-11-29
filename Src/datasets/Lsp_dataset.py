@@ -461,6 +461,10 @@ class LSP_Dataset(Dataset):
         depth_map = depth_map - 0.5
         if self.transform:
             depth_map = self.transform(depth_map)
+            
+        depth_map = depth_map.to('cuda')
+        label = label.to('cuda')
+
         return depth_map, label, video_name #, false_seq, percentage_group, max_consec
 
     def __len__(self):

@@ -22,16 +22,30 @@ from Src.spoter.utils import train_epoch, evaluate, generate_csv_result, generat
 from Src.spoter.gaussian_noise import GaussianNoise
 
 import wandb
+from torch.nn.utils.rnn import pad_sequence
 
-PROJECT_WANDB = "ml_projects"#Spoter-as-orignal"
-ENTITY = "cristian-ml" #c-vasquezr
+# Modifica el collate_fn para rellenar secuencias
+def custom_collate_fn(batch):
+    data, labels, video_names = zip(*batch)
+    data = pad_sequence(data, batch_first=True)
+    labels = torch.cat(labels)
+    return data, labels, video_names
 
-os.environ["WANDB_API_KEY"] = '8b48ee67f7df4cbf2d665be5b5ef80c049487f57'
+
+
+PROJECT_WANDB = "SLR_2023"#Spoter-as-orignal"
+ENTITY = "ml_projects" #c-vasquezr
+
+from dotenv import load_dotenv
+import os
+load_dotenv()
+
+os.environ["WANDB_API_KEY"] =  os.getenv("WANDB_API_KEY")
 
 def get_default_args():
     parser = argparse.ArgumentParser(add_help=False)
 
-    parser.add_argument("--experiment_name", type=str, default="DGI305-AEC-sweep",
+    parser.add_argument("--experiment_name", type=str, default="305-aec-sw",
                         help="Name of the experiment after which the logs and plots will be named")
     parser.add_argument("--num_classes", type=int, default=38, help="Number of classes to be recognized by the model")
     parser.add_argument("--seed", type=int, default=379,
@@ -52,22 +66,24 @@ def get_default_args():
     parser.add_argument("--validation_set_path", type=str, default="../ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe-Val.hdf5", help="Path to the validation dataset CSV file")
 
     # Training hyperparameters
-    parser.add_argument("--epochs", type=int, default=2000, help="Number of epochs to train the model for")
+    parser.add_argument("--epochs", type=int, default=10000, help="Number of epochs to train the model for")
     parser.add_argument("--lr", type=float, default=0.001, help="Learning rate for the model training")
     parser.add_argument("--log_freq", type=int, default=1,
                         help="Log frequency (frequency of printing all the training info)")
 
     ## trainable parameters
     #num_classes, num_rows=64,hidden_dim=108, num_heads=9, num_layers_1=6, num_layers_2=6, dim_feedforward=256)
-    parser.add_argument("--num_rows", type=int, default=1, help="")
+    
+    parser.add_argument("--sweep", type=int, default=0, help="")
+    parser.add_argument("--num_rows", type=int, default=64, help="")
     parser.add_argument("--hidden_dim", type=int, default=108, help="")
     parser.add_argument("--num_heads", type=int, default=9, help="")
     parser.add_argument("--num_layers_1", type=int, default=6, help="")
     parser.add_argument("--num_layers_2", type=int, default=6, help="")
     parser.add_argument("--dim_feedforward", type=int, default=256, help="")
 
-    parser.add_argument("--early_stopping_patience", type=int, default=20, help="")
-    parser.add_argument("--max_acc_difference", type=float, default=0.4, help="")
+    parser.add_argument("--early_stopping_patience", type=int, default=100, help="")
+    parser.add_argument("--max_acc_difference", type=float, default=0.35, help="")
 
     # Checkpointing
     parser.add_argument("--save_checkpoints", type=bool, default=True,
@@ -80,7 +96,7 @@ def get_default_args():
 
     # Gaussian noise normalization
     parser.add_argument("--gaussian_mean", type=int, default=0, help="Mean parameter for Gaussian noise layer")
-    parser.add_argument("--gaussian_std", type=int, default=0.001,
+    parser.add_argument("--gaussian_std", type=int, default=0.00001,
                         help="Standard deviation parameter for Gaussian noise layer")
 
     # Visualization
@@ -117,6 +133,14 @@ def lr_lambda(current_step, optim):
 
     return optim
 
+def get_df_stats(data_set,stats,num_classes):
+    stats = {data_set.inv_dict_labels_dataset[k]:v for k,v in stats.items() if k < num_classes}
+    df_stats = pd.DataFrame(stats.items(), columns=['gloss', 'n_success_n_total'])
+    df_stats[['n_success', 'n_total']] = pd.DataFrame(df_stats['n_success_n_total'].tolist(), index=df_stats.index)
+    df_stats.drop(columns=['n_success_n_total'], inplace=True)
+    df_stats['gloss_acc'] = df_stats['n_success'] / df_stats['n_total']
+    df_stats = df_stats.sort_values(by='gloss')
+    return df_stats
 
 def train(args):
 
@@ -142,9 +166,9 @@ def train(args):
         ]
     )
 
-    args.experiment_name = "_".join([args.experiment_name.split('--')[0], 
-                                     f"lr-{args.lr}",
-                                     f"Nclass-{args.num_classes}"]) 
+    #args.experiment_name = "_".join([args.experiment_name.split('--')[0], 
+    #                                 f"lr-{args.lr}",
+    #                                 f"Nclass-{args.num_classes}"]) 
 
 
 
@@ -187,6 +211,9 @@ def train(args):
         train_set = __split_of_train_sequence(train_set, args.experimental_train_split)
 
     train_loader = DataLoader(train_set, shuffle=True, generator=g)
+    # Crea un nuevo DataLoader con el collate_fn personalizado
+    #train_loader = DataLoader(train_set, shuffle=True, generator=g, collate_fn=custom_collate_fn, batch_size=64)
+
 
     # RETRIEVE TRAINING
     if args.continue_training:
@@ -320,25 +347,16 @@ def train(args):
 
         #sgd_optimizer = lr_lambda(epoch, sgd_optimizer)
 
-        train_loss, _, _, train_acc = train_epoch(slrt_model, train_loader, cel_criterion, sgd_optimizer, device)
+        train_loss, _, _, train_acc,train_stats = train_epoch(slrt_model, train_loader, cel_criterion, sgd_optimizer, device,epoch=epoch)
         losses.append(train_loss.item())
         train_accs.append(train_acc)
 
         if val_loader:
             slrt_model.train(False)
-            val_loss, _, _, val_acc, val_acc_top5, stats = evaluate(slrt_model, val_loader, cel_criterion, device)
+            val_loss, _, _, val_acc, val_acc_top5, val_stats = evaluate(slrt_model, val_loader, cel_criterion, device,epoch=epoch)
             slrt_model.train(True)
             val_accs.append(val_acc)
             val_accs_top5.append(val_acc_top5)
-            wandb.log({
-                'train_acc': train_acc,
-                'train_loss': train_loss,
-                'val_acc': val_acc,
-                'Best_acc': top_val_acc,
-                'val_top5_acc': val_acc_top5,
-                'val_loss':val_loss,
-                'epoch': epoch
-            })
 
             if val_acc > best_val_max_acc:
                 best_val_max_acc = val_acc
@@ -362,15 +380,43 @@ def train(args):
                 break  # Exit the training loop
 
             
-        stats = {val_set.inv_dict_labels_dataset[k]:v for k,v in stats.items() if k < args.num_classes}
-        
-        df_stats = pd.DataFrame(stats.items(), columns=['clase', 'Aciertos_Total'])
-        df_stats[['Aciertos', 'Total']] = pd.DataFrame(df_stats['Aciertos_Total'].tolist(), index=df_stats.index)
-        df_stats.drop(columns=['Aciertos_Total'], inplace=True)
-        df_stats['Accuracy'] = df_stats['Aciertos'] / df_stats['Total']
-        print("Validation")
-        print(df_stats)
+        df_train_stats = get_df_stats(train_set,train_stats,args.num_classes).add_prefix('train_')
+        df_val_stats   = get_df_stats(val_set,val_stats,args.num_classes).add_prefix('val_')
+        df_merged = pd.merge(df_train_stats, df_val_stats, how='inner', left_on='train_gloss', right_on='val_gloss')
+        # Puedes eliminar la columna redundante después de la fusión
+        df_merged.drop('val_gloss', axis=1, inplace=True)
+        # Renombra las columnas para que solo quede el nombre "gloss"
+        df_merged.rename(columns={'train_gloss': 'gloss'}, inplace=True)
 
+        if val_loader:
+            log_values = {
+                'train_acc': train_acc,
+                'train_loss': train_loss,
+                'val_acc': val_acc,
+                'val_loss':val_loss,
+                'val_best_acc': top_val_acc,
+                'val_top5_acc': val_acc_top5,
+                'epoch': epoch
+            }
+
+        if val_loader:
+            for _, row in df_train_stats.iterrows():
+                gloss_name = row['train_gloss']
+                accuracy_metric_name = f'train_acc_{gloss_name}'
+                log_values[accuracy_metric_name] = row['train_gloss_acc']
+            for _, row in df_val_stats.iterrows():
+                gloss_name = row['val_gloss']
+                accuracy_metric_name = f'val_acc_{gloss_name}'
+                log_values[accuracy_metric_name] = row['val_gloss_acc']
+
+
+
+        if val_loader:
+            log_values['Train_table_stats']  = wandb.Table(dataframe=df_train_stats)
+            log_values['Val_table_stats'] =  wandb.Table(dataframe=df_val_stats)
+            log_values['Compare_table_stats'] =  wandb.Table(dataframe=df_merged)
+            wandb.log(log_values)
+            
         # Save checkpoints if they are best in the current subset
         if args.save_checkpoints:
             if val_acc > top_val_acc:
@@ -385,7 +431,8 @@ def train(args):
                 }, model_save_folder_path + "/checkpoint_best_model.pth")
                 
                 generate_csv_result(run, slrt_model, val_loader, model_save_folder_path, val_set.inv_dict_labels_dataset, device)
-                generate_csv_accuracy(df_stats, model_save_folder_path)
+                generate_csv_accuracy(df_train_stats, model_save_folder_path,name='/train_accuracy.csv')
+                generate_csv_accuracy(df_val_stats, model_save_folder_path,name='/evaluate_accuracy.csv')
                 
                 artifact = wandb.Artifact(f'best-model_{run.id}.pth', type='model')
                 artifact.add_file(model_save_folder_path + "/checkpoint_best_model.pth")

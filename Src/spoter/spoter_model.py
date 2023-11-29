@@ -1,4 +1,3 @@
-
 import copy
 import torch
 
@@ -47,7 +46,7 @@ class SPOTER(nn.Module):
     def __init__(self, num_classes, num_rows=64,hidden_dim=108, num_heads=9, num_layers_1=6, num_layers_2=6, dim_feedforward=256):
         super().__init__()
 
-        self.row_embed_aux = nn.Parameter(torch.rand(1, hidden_dim))
+        self.row_embed_aux = nn.Parameter(torch.rand(num_rows, hidden_dim))
         
         self.pos = nn.Parameter(torch.cat([self.row_embed_aux[0].unsqueeze(0).repeat(1, 1, 1)], dim=-1).flatten(0, 1).unsqueeze(0))
         self.class_query = nn.Parameter(torch.rand(1, hidden_dim))
@@ -61,17 +60,35 @@ class SPOTER(nn.Module):
         print("=="*30)
         print("=="*30)
         print("self.row_embed_aux[0]=",self.row_embed_aux[0])
+        print("hidden_dim = ",hidden_dim)
+        print("pos = ",self.pos.shape)
         print("self.transformer.decoder.num_layers=",self.transformer.decoder.num_layers)
         print("=="*30)
         print("=="*30)
         self.transformer.decoder.layers = _get_clones(custom_decoder_layer, self.transformer.decoder.num_layers)
 
 
+    """
     def forward(self, inputs):
         h = torch.unsqueeze(inputs.flatten(start_dim=1), 1).float()
         h = self.transformer(self.pos + h, self.class_query.unsqueeze(0)).transpose(0, 1)
         res = self.linear_class(h)
 
+        return res
+    """
+    def forward(self, inputs,show=False):
+        print("++"*30) if show else None
+        print("++"*30) if show else None
+        print(f"inputs shape: {inputs.shape}") if show else None
+        h = torch.unsqueeze(inputs.flatten(start_dim=1), 1).float()
+        print(f"h      shape: {h.shape}") if show else None
+        print(f"pos    shape: {self.pos.shape}") if show else None
+        aux = self.pos + h
+        print(f"aux    shape: {aux.shape}") if show else None
+        h = self.transformer(aux, self.class_query.unsqueeze(0)).transpose(0, 1)
+        print(f"h      shape: {h.shape}") if show else None
+        res = self.linear_class(h)
+        print(f"res    shape: {res.shape}") if show else None
         return res
 
 
