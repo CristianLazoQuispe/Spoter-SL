@@ -1,0 +1,21 @@
+program: train.py
+method: grid
+parameters:
+  sweep:
+    values: [1]
+  lr:
+    values: [0.0001,0.000001] #0.001, 0.00001,
+  num_heads:
+    values: [9,3,1] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim
+  num_layers_1:
+    values: [9,3,1] # [64,12,8,6,4,2,1]
+  num_layers_2:
+    values: [9,3,1] # [128,64,32,16,4,,64,12,8,6,4,2,1] # self.transformer.decoder.num_layers
+  dim_feedforward:
+    values: [128,64,8,1] #
+  #num_rows:
+  #  values: [1] # [64,32,16,8,4,2,1] no importa losvalores porque solo usa 1 siempre
+  #hidden_dim:
+  #  values: [108] # RuntimeError: The size of tensor a (54) must match the size of tensor b (108) at non-singleton dimension 2
+
+  #python train.py --epoch 200 --experiment_name 305-aec --lr 0.0001 --num_rows 64 --num_heads 9 --num_layers_1 9 --num_layers_2 9 --dim_feedforward 128
