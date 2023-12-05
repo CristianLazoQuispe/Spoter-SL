@@ -20,7 +20,7 @@ from Src.datasets.Lsp_dataset import LSP_Dataset
 from Src.spoter.spoter_model import SPOTER
 from Src.spoter.utils import train_epoch, evaluate, generate_csv_result, generate_csv_accuracy
 from Src.spoter.gaussian_noise import GaussianNoise
-
+from Src.spoter.gpu import configurar_cuda_visible
 import wandb
 from torch.nn.utils.rnn import pad_sequence
 
@@ -66,7 +66,7 @@ def get_default_args():
     parser.add_argument("--validation_set_path", type=str, default="../ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe-Val.hdf5", help="Path to the validation dataset CSV file")
 
     # Training hyperparameters
-    parser.add_argument("--epochs", type=int, default=10000, help="Number of epochs to train the model for")
+    parser.add_argument("--epochs", type=int, default=20000, help="Number of epochs to train the model for")
     parser.add_argument("--lr", type=float, default=0.001, help="Learning rate for the model training")
     parser.add_argument("--log_freq", type=int, default=1,
                         help="Log frequency (frequency of printing all the training info)")
@@ -82,7 +82,7 @@ def get_default_args():
     parser.add_argument("--num_layers_2", type=int, default=6, help="")
     parser.add_argument("--dim_feedforward", type=int, default=256, help="")
 
-    parser.add_argument("--early_stopping_patience", type=int, default=100, help="")
+    parser.add_argument("--early_stopping_patience", type=int, default=200, help="")
     parser.add_argument("--max_acc_difference", type=float, default=0.35, help="")
 
     # Checkpointing
@@ -105,7 +105,7 @@ def get_default_args():
     parser.add_argument("--plot_lr", type=bool, default=True,
                         help="Determines whether the LR should be plotted at the end")
 
-    parser.add_argument("--device", type=int, default=0,
+    parser.add_argument("--device", type=str, default='0',
                     help="Determines which Nvidia device will use (just one number)")
     # To continue training the data
     parser.add_argument("--continue_training", type=str, default="",help="path to retrieve the model for continue training")
@@ -175,7 +175,7 @@ def train(args):
     # Set device to CUDA only if applicable
     device = torch.device("cpu")
     if torch.cuda.is_available():
-        device = torch.device(f"cuda:{args.device}")
+        device = torch.device("cuda")
 
     
 
@@ -519,4 +519,10 @@ def train(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("", parents=[get_default_args()], add_help=False)
     args = parser.parse_args()
-    train(args)
+    
+    
+    
+    @configurar_cuda_visible([int(value) for value in args.device.split(",")])
+    def main_process(): 
+        train(args)
+    main_process()

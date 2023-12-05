@@ -457,7 +457,7 @@ def predict_fn(input_data, model):
     device = torch.device('cpu')
     print("initially set to use CPU")
     if torch.cuda.is_available():
-        torch.cuda.set_device(0)
+        #torch.cuda.set_device(0)
         print("Now using CUDA")
         device = torch.device("cuda")
 
