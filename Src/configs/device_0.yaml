@@ -16,4 +16,5 @@ parameters:
   device:
     values: [0]
   augmentation:
-    values: [1]
+    values: [0]
+    
