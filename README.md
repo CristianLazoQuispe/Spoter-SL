@@ -44,3 +44,9 @@ You can also kill a particular session using the following command:
 
     watch -n 1 nvidia-smi
 
+
+Entrenamiento sin augmentation
+
+Train Epoch 1:  19%|██████████████▌                                                            | 144/744 [02:16<09:12,  1.09it/s]
+
+Train Epoch 1:   8%|█████▊                                                                      | 57/744 [02:11<24:23,  2.13s/it]

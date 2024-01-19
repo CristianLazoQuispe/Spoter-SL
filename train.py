@@ -16,7 +16,8 @@ from torch.utils.data import DataLoader
 from pathlib import Path
 
 from Src.datasets.utils_split import __balance_val_split, __split_of_train_sequence, __log_class_statistics
-from Src.datasets.Lsp_dataset import LSP_Dataset
+from Src.datasets.Spoter_dataloader import LSP_Dataset
+from Src.datasets.Spoter_dataloader_aug import AugmentedDataLoader
 from Src.spoter.spoter_model import SPOTER
 from Src.spoter.utils import train_epoch, evaluate, generate_csv_result, generate_csv_accuracy
 from Src.spoter.gaussian_noise import GaussianNoise
@@ -110,6 +111,8 @@ def get_default_args():
     # To continue training the data
     parser.add_argument("--continue_training", type=str, default="",help="path to retrieve the model for continue training")
     parser.add_argument("--transfer_learning", type=str, default="",help="path to retrieve the model for transfer learning")
+    parser.add_argument("--augmentation", type=int, default=0,
+                        help="Augmentations")
 
 
 
@@ -182,11 +185,16 @@ def train(args):
     # DATA LOADER
         # Training set
     transform = transforms.Compose([GaussianNoise(args.gaussian_mean, args.gaussian_std)])
-    train_set = LSP_Dataset(args.training_set_path, transform=transform, have_aumentation=True, keypoints_model='mediapipe')
+    
+    if args.augmentation:
+        train_set = LSP_Dataset(args.training_set_path, transform=transform, have_aumentation=False, keypoints_model='mediapipe')
+    else:
+        train_set = LSP_Dataset(args.training_set_path, transform=transform, have_aumentation=True, keypoints_model='mediapipe')
 
     # Validation set
     if args.validation_set == "from-file":
         val_set = LSP_Dataset(args.validation_set_path, keypoints_model='mediapipe', have_aumentation=False)
+        
         val_loader = DataLoader(val_set, shuffle=True, generator=g)
 
     elif args.validation_set == "split-from-train":
@@ -202,7 +210,6 @@ def train(args):
     if args.testing_set_path:
         eval_set = LSP_Dataset(args.testing_set_path, keypoints_model='mediapipe')
         eval_loader = DataLoader(eval_set, shuffle=True, generator=g)
-
     else:
         eval_loader = None
 
@@ -210,7 +217,11 @@ def train(args):
     if args.experimental_train_split:
         train_set = __split_of_train_sequence(train_set, args.experimental_train_split)
 
-    train_loader = DataLoader(train_set, shuffle=True, generator=g)
+
+    if args.augmentation:
+        train_loader = AugmentedDataLoader(train_set, shuffle=True, generator=g)
+    else:
+        train_loader = DataLoader(train_set, shuffle=True, generator=g)
     # Crea un nuevo DataLoader con el collate_fn personalizado
     #train_loader = DataLoader(train_set, shuffle=True, generator=g, collate_fn=custom_collate_fn, batch_size=64)
 
@@ -343,6 +354,10 @@ def train(args):
     epochs_without_improvement = 0
 
 
+    print("*"*50)
+    print("args.augmentation:",args.augmentation)
+    if args.augmentation:
+        print("AUGMENTATION IS USED")
     for epoch in range(epoch_start, args.epochs):
 
         #sgd_optimizer = lr_lambda(epoch, sgd_optimizer)

@@ -18,21 +18,33 @@ def train_epoch(model, dataloader, criterion, optimizer, device, scheduler=None,
     stats = {i: [0, 0] for i in range(302)}
 
     for i, data in tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Train Epoch {epoch + 1}'):
-        inputs, labels, _ = data
-        inputs = inputs.squeeze(0).to(device)
-        labels = labels.to(device, dtype=torch.long)
-        if i==0:
-            print("labels :",labels)
-        optimizer.zero_grad()
-        #outputs = model.forward(inputs,show=(i<5 and epoch==0)).expand(1, -1, -1)
-        outputs = model(inputs).expand(1, -1, -1)
+        inputs_total, labels_total, _ = data
 
-        loss = criterion(outputs[0], labels[0])
-        loss.backward()
-        # Clip gradients to prevent exploding gradients
-        nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
-        optimizer.step()
-        running_loss += loss
+        for inputs, labels in zip(inputs_total,labels_total):
+            ##print(inputs_total.shape)
+            ##print("inputs original:",inputs.shape)
+            ##print(labels_total.shape)
+            ##print("labels original:",labels.shape)
+            inputs  = torch.tensor(inputs).unsqueeze(0).to(device)
+            labels  = torch.tensor(labels).unsqueeze(0).to(device)
+            ##print("inputs transformado:",inputs.shape)
+            ##print("labels transformado:",labels.shape)
+            #Train Epoch 1:  11%|████████    | 79/744 [02:35<16:52,  1.52s/it]
+            #sin aug Train Epoch 1:   4%|███      | 30/744 [00:27<10:27,  1.14it/s]
+            inputs = inputs.squeeze(0).to(device)
+            labels = labels.to(device, dtype=torch.long)
+            if i==0:
+                print("labels :",labels)
+            optimizer.zero_grad()
+            #outputs = model.forward(inputs,show=(i<5 and epoch==0)).expand(1, -1, -1)
+            outputs = model(inputs).expand(1, -1, -1)
+
+            loss = criterion(outputs[0], labels[0])
+            loss.backward()
+            # Clip gradients to prevent exploding gradients
+            nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
+            optimizer.step()
+            running_loss += loss
 
         # Statistics
         if int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2))) == int(labels[0][0]):

@@ -11,7 +11,7 @@ import numpy as np
 
 class augmentation():
     
-    def __init__(self, body_type_identifiers, body_section_dict):
+    def __init__(self, body_type_identifiers, body_section_dict,device='gpu'):
         super().__init__()
         print(body_type_identifiers.keys())
         self.body_section_dict = body_section_dict
@@ -28,6 +28,7 @@ class augmentation():
         arms_identifiers = ['pose_chest_middle_up', 'pose_right_wrist', 'pose_left_wrist','pose_right_elbow','pose_left_elbow', 'pose_left_shoulder', 'pose_right_shoulder']
         self.ARM_IDENTIFIERS_ORDER = [body_section_dict[identifiers] for identifiers in arms_identifiers]
         '''
+        self.device = device
 
     def __random_pass(self, prob):
         return random.random() < prob
@@ -110,8 +111,8 @@ class augmentation():
         """
 
         #return {**body_identifiers, **hand_identifiers}
-        body_landmarks = torch.tensor(body_identifiers)
-        hand_landmarks = torch.tensor(hand_identifiers)
+        body_landmarks = torch.tensor(body_identifiers,device=self.device)
+        hand_landmarks = torch.tensor(hand_identifiers,device=self.device)
 
         # Concatenar los dos tensores a lo largo de la segunda dimensión
         tensor_concatenado = torch.cat([body_landmarks, hand_landmarks], dim=1)
@@ -133,11 +134,11 @@ class augmentation():
 
         body_landmarks = [[self.__rotate((0.5, 0.5), frame, angle) for frame in value] for value in
                         sign[:,self.BODY_IDENTIFIERS,:]]
-        sign[:,self.BODY_IDENTIFIERS,:] = torch.tensor(body_landmarks)
+        sign[:,self.BODY_IDENTIFIERS,:] = torch.tensor(body_landmarks,device=self.device)
 
         hand_landmarks = [[self.__rotate((0.5, 0.5), frame, angle) for frame in value] for value in
                         sign[:,self.HAND_IDENTIFIERS,:]]
-        sign[:,self.HAND_IDENTIFIERS,:] = torch.tensor(hand_landmarks)
+        sign[:,self.HAND_IDENTIFIERS,:] = torch.tensor(hand_landmarks,device=self.device)
 
         return sign #self.__wrap_sign_into_row(body_landmarks, hand_landmarks)
 
@@ -193,11 +194,11 @@ class augmentation():
 
 
         landmarks_array = sign[:,self.BODY_IDENTIFIERS,:]#self.__dictionary_to_numpy(body_landmarks)
-        augmented_landmarks = cv2.perspectiveTransform(np.array(landmarks_array, dtype=np.float32), mtx)
+        augmented_landmarks = cv2.perspectiveTransform(np.array(landmarks_array.cpu(), dtype=np.float32), mtx)
 
         augmented_zero_landmark = cv2.perspectiveTransform(np.array([[[0, 0]]], dtype=np.float32), mtx)[0][0]
         augmented_landmarks = np.stack([np.where(sub == augmented_zero_landmark, [0, 0], sub) for sub in augmented_landmarks])
-        sign[:,self.BODY_IDENTIFIERS,:] = torch.tensor(augmented_landmarks)
+        sign[:,self.BODY_IDENTIFIERS,:] = torch.tensor(augmented_landmarks,device=self.device)
         #body_landmarks = self.__numpy_to_dictionary(augmented_landmarks)
 
         return sign#self.__wrap_sign_into_row(body_landmarks, hand_landmarks)
@@ -227,7 +228,7 @@ class augmentation():
 
                     for to_be_rotated in arm_side_ids[landmark_index + 1:]:
                         augmented_values = [self.__rotate(sign[frame_index,landmark_origin,:], frame, angle) for frame_index, frame in enumerate(sign[:,to_be_rotated,:])]
-                        augmented_values = torch.tensor(augmented_values)
+                        augmented_values = torch.tensor(augmented_values,device=self.device)
                         sign[:,to_be_rotated,:] = augmented_values
         
         return sign
