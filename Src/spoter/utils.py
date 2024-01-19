@@ -18,8 +18,10 @@ def train_epoch(model, dataloader, criterion, optimizer, device, scheduler=None,
     stats = {i: [0, 0] for i in range(302)}
 
     for i, data in tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Train Epoch {epoch + 1}'):
+        #print("data:",data)
         inputs_total, labels_total, _ = data
-
+        if inputs_total is None:
+            break
         for inputs, labels in zip(inputs_total,labels_total):
             ##print(inputs_total.shape)
             ##print("inputs original:",inputs.shape)

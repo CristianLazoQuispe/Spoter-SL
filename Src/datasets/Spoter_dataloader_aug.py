@@ -25,7 +25,7 @@ class AugmentedDataLoaderIterator:
         try:
             indices = [next(self.index_sampler) for _ in range(self.batch_size)]
         except StopIteration:
-            return StopIteration
+            return None,None,None
 
         for idx in indices:
             sample = self.dataset[idx]
