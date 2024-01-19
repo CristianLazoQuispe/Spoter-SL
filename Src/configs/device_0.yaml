@@ -17,3 +17,5 @@ parameters:
     values: [0]
   augmentation:
     values: [1]
+
+#python train.py --device=0 --dim_feedforward=128 --lr=0.0001 --num_heads=54 --num_layers_1=32 --num_layers_2=256 --sweep=1 --augmentation=1

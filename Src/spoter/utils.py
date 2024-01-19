@@ -48,16 +48,16 @@ def train_epoch(model, dataloader, criterion, optimizer, device, scheduler=None,
             optimizer.step()
             running_loss += loss
 
-        # Statistics
-        if int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2))) == int(labels[0][0]):
-            stats[int(labels[0][0])][0] += 1
-            pred_correct += 1
-        
-        if int(labels[0][0]) in torch.topk(torch.reshape(outputs, (-1,)), k).indices.tolist():
-            pred_top_5 += 1
+            # Statistics
+            if int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2))) == int(labels[0][0]):
+                stats[int(labels[0][0])][0] += 1
+                pred_correct += 1
+            
+            if int(labels[0][0]) in torch.topk(torch.reshape(outputs, (-1,)), k).indices.tolist():
+                pred_top_5 += 1
 
-        stats[int(labels[0][0])][1] += 1
-        pred_all += 1
+            stats[int(labels[0][0])][1] += 1
+            pred_all += 1
 
     if scheduler:
         #scheduler.step(running_loss.item() / len(dataloader))
