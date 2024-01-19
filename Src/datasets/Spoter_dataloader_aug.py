@@ -32,7 +32,7 @@ class AugmentedDataLoaderIterator:
             depth_map_original, label, video_name = sample
 
             #depth_map_original = depth_map.to("cpu")
-            for cnt in range(math.ceil(self.dataset.factors[label.item()])):
+            for cnt in range(int(self.dataset.factors[label.item()]+0.5)):
                 # Apply potential augmentations
                 depth_map = depth_map_original
                 if random.random() < self.dataset.augmentations_prob:
