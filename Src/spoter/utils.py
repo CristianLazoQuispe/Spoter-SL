@@ -12,8 +12,6 @@ def train_epoch(model, dataloader, criterion, optimizer, device, scheduler=None,
     
     pred_correct, pred_top_5,  pred_all = 0, 0, 0
     running_loss = 0.0
-
-    data_length = len(dataloader)
     
     stats = {i: [0, 0] for i in range(302)}
 
@@ -91,7 +89,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device, scheduler=None,
         #scheduler.step(running_loss.item() / len(dataloader))
         scheduler.step()
 
-    return running_loss/data_length, pred_correct, pred_all, (pred_correct / pred_all),stats,labels_original,labels_predicted
+    return running_loss/pred_all, pred_correct, pred_all, (pred_correct / pred_all),stats,labels_original,labels_predicted
 
 
 def evaluate(model, dataloader, cel_criterion, device,epoch=0,args=None):
@@ -100,8 +98,6 @@ def evaluate(model, dataloader, cel_criterion, device,epoch=0,args=None):
     running_loss = 0.0
     
     stats = {i: [0, 0] for i in range(302)}
-
-    data_length = len(dataloader)
 
     k = 5 # top 5 (acc)
     labels_original = []
@@ -135,7 +131,7 @@ def evaluate(model, dataloader, cel_criterion, device,epoch=0,args=None):
         stats[label_original][1] += 1
         pred_all += 1
 
-    return running_loss/data_length, pred_correct, pred_all, (pred_correct / pred_all), (pred_top_5 / pred_all), stats,labels_original,labels_predicted
+    return running_loss/pred_all, pred_correct, pred_all, (pred_correct / pred_all), (pred_top_5 / pred_all), stats,labels_original,labels_predicted
 
 
 def evaluate_top_k(model, dataloader, device, k=5):
@@ -164,9 +160,6 @@ def evaluate_with_features(model, dataloader, cel_criterion, device, print_stats
     running_loss = 0.0
     
     stats = {i: [0, 0] for i in range(302)}
-
-    data_length = len(dataloader)
-
     k = 5 # top 5 (acc)
 
     # create a list to store the results
@@ -220,7 +213,7 @@ def evaluate_with_features(model, dataloader, cel_criterion, device, print_stats
     #     save_path = 'results.csv'
     #     df_results.to_csv(save_path, index=False)
 
-    return running_loss/data_length, pred_correct, pred_all, (pred_correct / pred_all), (pred_top_5 / pred_all), df_results
+    return running_loss/pred_all, pred_correct, pred_all, (pred_correct / pred_all), (pred_top_5 / pred_all), df_results
 
 
 def generate_csv_result(run, model, dataloader, folder_path, meaning, device):
