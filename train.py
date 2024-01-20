@@ -24,6 +24,8 @@ from Src.spoter.gaussian_noise import GaussianNoise
 from Src.spoter.gpu import configurar_cuda_visible
 import wandb
 from torch.nn.utils.rnn import pad_sequence
+from sklearn.metrics import f1_score
+
 
 # Modifica el collate_fn para rellenar secuencias
 def custom_collate_fn(batch):
@@ -113,8 +115,10 @@ def get_default_args():
     parser.add_argument("--transfer_learning", type=str, default="",help="path to retrieve the model for transfer learning")
     parser.add_argument("--augmentation", type=int, default=0,
                         help="Augmentations")
-
-
+    parser.add_argument("--batch_mean", type=int, default=0,
+                        help="batch_mean flag")    
+    parser.add_argument("--batch_size", type=int, default=0,
+                        help="batch_size ")   
 
 
     return parser
@@ -362,13 +366,13 @@ def train(args):
 
         #sgd_optimizer = lr_lambda(epoch, sgd_optimizer)
 
-        train_loss, _, _, train_acc,train_stats = train_epoch(slrt_model, train_loader, cel_criterion, sgd_optimizer, device,epoch=epoch)
+        train_loss, _, _, train_acc,train_stats,train_labels_original,train_labels_predicted = train_epoch(slrt_model, train_loader, cel_criterion, sgd_optimizer, device,epoch=epoch,args=args)
         losses.append(train_loss.item())
         train_accs.append(train_acc)
 
         if val_loader:
             slrt_model.train(False)
-            val_loss, _, _, val_acc, val_acc_top5, val_stats = evaluate(slrt_model, val_loader, cel_criterion, device,epoch=epoch)
+            val_loss, _, _, val_acc, val_acc_top5, val_stats,val_labels_original,val_labels_predicted = evaluate(slrt_model, val_loader, cel_criterion, device,epoch=epoch,args=args)
             slrt_model.train(True)
             val_accs.append(val_acc)
             val_accs_top5.append(val_acc_top5)
@@ -403,6 +407,14 @@ def train(args):
         # Renombra las columnas para que solo quede el nombre "gloss"
         df_merged.rename(columns={'train_gloss': 'gloss'}, inplace=True)
 
+        
+        train_f1_micro = f1_score(train_labels_original, train_labels_predicted, average='micro')
+        val_f1_micro   = f1_score(val_labels_original, val_labels_predicted, average='micro')
+
+        train_f1_weighted = f1_score(train_labels_original, train_labels_predicted, average='weighted')
+        val_f1_weighted   = f1_score(val_labels_original, val_labels_predicted, average='weighted')
+
+
         if val_loader:
             log_values = {
                 'train_acc': train_acc,
@@ -411,7 +423,11 @@ def train(args):
                 'val_loss':val_loss,
                 'val_best_acc': top_val_acc,
                 'val_top5_acc': val_acc_top5,
-                'epoch': epoch
+                'epoch': epoch,
+                'train_f1_micro':train_f1_micro,
+                'val_f1_micro':val_f1_micro,
+                'train_f1_weighted':train_f1_weighted,
+                'val_f1_weighted':val_f1_weighted
             }
 
         if val_loader:

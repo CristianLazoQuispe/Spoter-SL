@@ -6,7 +6,7 @@ import csv
 import wandb
 import tqdm
 
-def train_epoch(model, dataloader, criterion, optimizer, device, scheduler=None,clip_grad_max_norm=1.0,epoch=0):
+def train_epoch(model, dataloader, criterion, optimizer, device, scheduler=None,clip_grad_max_norm=1.0,epoch=0,args=None):
 
     k = 5
     
@@ -17,22 +17,22 @@ def train_epoch(model, dataloader, criterion, optimizer, device, scheduler=None,
     
     stats = {i: [0, 0] for i in range(302)}
 
+    batch_size = args.batch_size
+    flag_mean = args.batch_mean
+    accumulated_loss = 0
+    counter = 0
+
+    labels_original = []
+    labels_predicted = []
+
     for i, data in tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Train Epoch {epoch + 1}'):
         #print("data:",data)
         inputs_total, labels_total, _ = data
         if inputs_total is None:
             break
         for inputs, labels in zip(inputs_total,labels_total):
-            ##print(inputs_total.shape)
-            ##print("inputs original:",inputs.shape)
-            ##print(labels_total.shape)
-            ##print("labels original:",labels.shape)
             inputs  = torch.tensor(inputs).unsqueeze(0).to(device)
             labels  = torch.tensor(labels).unsqueeze(0).to(device)
-            ##print("inputs transformado:",inputs.shape)
-            ##print("labels transformado:",labels.shape)
-            #Train Epoch 1:  11%|████████    | 79/744 [02:35<16:52,  1.52s/it]
-            #sin aug Train Epoch 1:   4%|███      | 30/744 [00:27<10:27,  1.14it/s]
             inputs = inputs.squeeze(0).to(device)
             labels = labels.to(device, dtype=torch.long)
             if i==0:
@@ -40,33 +40,61 @@ def train_epoch(model, dataloader, criterion, optimizer, device, scheduler=None,
             optimizer.zero_grad()
             #outputs = model.forward(inputs,show=(i<5 and epoch==0)).expand(1, -1, -1)
             outputs = model(inputs).expand(1, -1, -1)
-
             loss = criterion(outputs[0], labels[0])
-            loss.backward()
-            # Clip gradients to prevent exploding gradients
-            nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
-            optimizer.step()
             running_loss += loss
 
+            if flag_mean:
+                # Acumular la pérdida
+                accumulated_loss += loss
+                counter += 1
+
+                # Realizar el paso de retropropagación y actualización de parámetros cada batch_size iteraciones
+                if counter == batch_size:
+                    averaged_loss = accumulated_loss / batch_size
+                    averaged_loss.backward()
+                    nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
+                    optimizer.step()
+
+                    # Reiniciar contadores y acumulador de pérdida
+                    accumulated_loss = 0
+                    counter = 0
+                    optimizer.zero_grad()
+            else:
+                loss.backward()
+                nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
+                optimizer.step()
+                optimizer.zero_grad()
+            
+            label_original = int(labels[0][0])
+            label_predicted = int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2)))
+
+            labels_predicted.append(label_predicted)
+            labels_original.append(label_original)
             # Statistics
-            if int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2))) == int(labels[0][0]):
-                stats[int(labels[0][0])][0] += 1
+            if label_predicted == label_original:
+                stats[label_original][0] += 1
                 pred_correct += 1
             
-            if int(labels[0][0]) in torch.topk(torch.reshape(outputs, (-1,)), k).indices.tolist():
+            if label_original in torch.topk(torch.reshape(outputs, (-1,)), k).indices.tolist():
                 pred_top_5 += 1
 
-            stats[int(labels[0][0])][1] += 1
+            stats[label_original][1] += 1
             pred_all += 1
-
+    # Asegurarse de realizar el último paso de retropropagación si es necesario
+    if counter > 0:
+        averaged_loss = accumulated_loss / counter
+        averaged_loss.backward()
+        nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
+        optimizer.step()
+        
     if scheduler:
         #scheduler.step(running_loss.item() / len(dataloader))
         scheduler.step()
 
-    return running_loss/data_length, pred_correct, pred_all, (pred_correct / pred_all),stats
+    return running_loss/data_length, pred_correct, pred_all, (pred_correct / pred_all),stats,labels_original,labels_predicted
 
 
-def evaluate(model, dataloader, cel_criterion, device,epoch=0):
+def evaluate(model, dataloader, cel_criterion, device,epoch=0,args=None):
 
     pred_correct, pred_top_5,  pred_all = 0, 0, 0
     running_loss = 0.0
@@ -76,6 +104,8 @@ def evaluate(model, dataloader, cel_criterion, device,epoch=0):
     data_length = len(dataloader)
 
     k = 5 # top 5 (acc)
+    labels_original = []
+    labels_predicted = []
 
     for i, data in tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Evaludate Epoch {epoch + 1}'):
         inputs, labels, _ = data
@@ -86,19 +116,26 @@ def evaluate(model, dataloader, cel_criterion, device,epoch=0):
 
         loss = cel_criterion(outputs[0], labels[0])
         running_loss += loss
+        
 
+        label_original = int(labels[0][0])
+        label_predicted = int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2)))
+
+        labels_predicted.append(label_predicted)
+        labels_original.append(label_original)
+        
         # Statistics
-        if int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2))) == int(labels[0][0]):
-            stats[int(labels[0][0])][0] += 1
+        if label_predicted == label_original:
+            stats[label_original][0] += 1
             pred_correct += 1
         
-        if int(labels[0][0]) in torch.topk(torch.reshape(outputs, (-1,)), k).indices.tolist():
+        if label_original in torch.topk(torch.reshape(outputs, (-1,)), k).indices.tolist():
             pred_top_5 += 1
 
-        stats[int(labels[0][0])][1] += 1
+        stats[label_original][1] += 1
         pred_all += 1
 
-    return running_loss/data_length, pred_correct, pred_all, (pred_correct / pred_all), (pred_top_5 / pred_all), stats
+    return running_loss/data_length, pred_correct, pred_all, (pred_correct / pred_all), (pred_top_5 / pred_all), stats,labels_original,labels_predicted
 
 
 def evaluate_top_k(model, dataloader, device, k=5):

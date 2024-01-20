@@ -221,7 +221,7 @@ class LSP_Dataset(Dataset):
         self.labels = encoded_dataset
         self.label_freq = Counter(self.labels)
 
-        max_frequency = 3*max(self.label_freq.values())
+        max_frequency = 2*max(self.label_freq.values())
 
         # Calcular los factores de ajuste
         self.factors = {label: max_frequency / count for label, count in self.label_freq.items()}
