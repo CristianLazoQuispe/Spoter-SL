@@ -1,6 +1,8 @@
 program: train.py
 method: grid
 parameters:
+  experiment_name:
+    values: [si_aug_m_loss]
   sweep:
     values: [1]
   lr:
