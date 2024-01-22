@@ -25,7 +25,7 @@ from Src.spoter.gpu import configurar_cuda_visible
 import wandb
 from torch.nn.utils.rnn import pad_sequence
 from sklearn.metrics import f1_score
-
+import time
 
 # Modifica el collate_fn para rellenar secuencias
 def custom_collate_fn(batch):
@@ -376,6 +376,7 @@ def train(args):
     for epoch in range(epoch_start, args.epochs):
 
         #sgd_optimizer = lr_lambda(epoch, sgd_optimizer)
+        start_time = time.time()
 
         train_loss, _, _, train_acc,train_stats,train_labels_original,train_labels_predicted = train_epoch(slrt_model, train_loader, cel_criterion, sgd_optimizer, device,epoch=epoch,args=args)
         losses.append(train_loss.item())
@@ -425,6 +426,8 @@ def train(args):
         train_f1_weighted = f1_score(train_labels_original, train_labels_predicted, average='weighted')
         val_f1_weighted   = f1_score(val_labels_original, val_labels_predicted, average='weighted')
 
+        total_time = time.time()-start_time
+
 
         if val_loader:
             log_values = {
@@ -438,7 +441,8 @@ def train(args):
                 'train_f1_micro':train_f1_micro,
                 'val_f1_micro':val_f1_micro,
                 'train_f1_weighted':train_f1_weighted,
-                'val_f1_weighted':val_f1_weighted
+                'val_f1_weighted':val_f1_weighted,
+                'total_time':total_time
             }
 
         if val_loader:
