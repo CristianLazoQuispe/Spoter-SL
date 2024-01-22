@@ -28,6 +28,8 @@ def train_epoch(model, dataloader, criterion, optimizer, device, scheduler=None,
         inputs_total, labels_total, _ = data
         if inputs_total is None:
             break
+        if i < 2:
+            print("len inputs_total:",len(inputs_total))
         for inputs, labels in zip(inputs_total,labels_total):
             inputs  = torch.tensor(inputs).unsqueeze(0).to(device)
             labels  = torch.tensor(labels).unsqueeze(0).to(device)
