@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [no_aug_m_loss]
+    values: [si_aug_m_loss_w_b4]
   sweep:
     values: [1]
   lr:
@@ -18,10 +18,13 @@ parameters:
   device:
     values: [0]
   augmentation:
-    values: [0]
+    values: [1]
   batch_mean:
     values: [1]
   batch_size:
-    values: [16]
-
+    values: [4]
+  is_weighted:
+    values: [1]
+  label_smoothing:
+    values: [0]
 #python train.py --device=0 --dim_feedforward=128 --lr=0.0001 --num_heads=54 --num_layers_1=32 --num_layers_2=256 --sweep=1 --augmentation=1
