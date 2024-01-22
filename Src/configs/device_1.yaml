@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [si_aug_no_mean_loss_w]
+    values: [si_aug_no_mean_loss_w_b4]
   sweep:
     values: [1]
   lr:
@@ -22,7 +22,7 @@ parameters:
   batch_mean:
     values: [0]
   batch_size:
-    values: [16]
+    values: [4]
   is_weighted:
     values: [1]
   label_smoothing:
