@@ -23,6 +23,8 @@ def train_epoch(model, dataloader, criterion, optimizer, device, scheduler=None,
     labels_original = []
     labels_predicted = []
 
+    optimizer.zero_grad()
+
     for i, data in tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Train Epoch {epoch + 1}'):
         #print("data:",data)
         inputs_total, labels_total, _ = data
@@ -37,7 +39,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device, scheduler=None,
             labels = labels.to(device, dtype=torch.long)
             if i==0:
                 print("labels :",labels)
-            optimizer.zero_grad()
+
             #outputs = model.forward(inputs,show=(i<5 and epoch==0)).expand(1, -1, -1)
             outputs = model(inputs).expand(1, -1, -1)
             loss = criterion(outputs[0], labels[0])
