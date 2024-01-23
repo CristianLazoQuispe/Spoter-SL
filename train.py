@@ -121,6 +121,8 @@ def get_default_args():
                         help="batch_size ")
     parser.add_argument("--is_weighted", type=int, default=0,
                         help="Loss crossentropy weighted ")
+    parser.add_argument("--is_weighted_squared", type=int, default=0,
+                        help="Loss crossentropy weighted ")
     parser.add_argument("--label_smoothing", type=float, default=0,
                         help="Loss crossentropy weighted ")
                                                 
@@ -286,11 +288,22 @@ def train(args):
     
     # LABEL SMOOTHING IN CRITERION
     if args.is_weighted:
-        # CLASS WEIGHT
-        class_weight = torch.FloatTensor([train_set.factors[i] for i in range(args.num_classes)]).to(device)
-        print("\\\\\\"*20)
-        print("class_weight:",class_weight)
-        cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing, weight=class_weight)    
+        if args.is_weighted_squared:
+            # CLASS WEIGHT
+            factors = [train_set.factors[i]**2 for i in range(args.num_classes)]
+            min_factor = min(factors)
+            factors = [value/min_factor for value in factors]
+            class_weight = torch.FloatTensor(factors).to(device)
+            print("\\\\\\"*20)
+            print("class_weight:",class_weight)
+            cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing, weight=class_weight)    
+
+        else:
+            # CLASS WEIGHT
+            class_weight = torch.FloatTensor([train_set.factors[i] for i in range(args.num_classes)]).to(device)
+            print("\\\\\\"*20)
+            print("class_weight:",class_weight)
+            cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing, weight=class_weight)    
     else:
         cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)#, weight=class_weight)
     #cel_criterion = nn.CrossEntropyLoss()
