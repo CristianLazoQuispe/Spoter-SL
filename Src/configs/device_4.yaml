@@ -2,11 +2,11 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [original_bmean]
+    values: [original_bmean32_los0.001]
   sweep:
     values: [1]
   lr:
-    values: [0.0001] #0.001, 0.00001,
+    values: [0.001] #0.001, 0.00001,
   num_heads:
     values: [3,27] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim
   num_layers_1:
@@ -22,7 +22,7 @@ parameters:
   batch_mean:
     values: [1]
   batch_size:
-    values: [16]
+    values: [32]
   is_weighted:
     values: [0]
   label_smoothing:
