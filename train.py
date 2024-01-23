@@ -160,7 +160,24 @@ def get_df_stats(data_set,stats,num_classes):
 def train(args):
 
     # MARK: TRAINING PREPARATION AND MODULES
+    run = wandb.init(project=PROJECT_WANDB, 
+                     entity=ENTITY,
+                     config=args, 
+                     name=args.experiment_name, 
+                     job_type="model-training",
+                     tags=["paper"])
 
+
+    # Log the parameters to wandb
+    wandb.config.update({
+        "total_parameters": total_params,
+        "trainable_parameters": trainable_params,
+        "trainable_parameters_ratio": ratio
+    })
+
+    config = wandb.config
+    wandb.watch_called = False
+    
     # Initialize all the random seeds
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -339,23 +356,7 @@ def train(args):
     print("#"*30)
     print("#"*50)
 
-    run = wandb.init(project=PROJECT_WANDB, 
-                     entity=ENTITY,
-                     config=args, 
-                     name=args.experiment_name, 
-                     job_type="model-training",
-                     tags=["paper"])
 
-
-    # Log the parameters to wandb
-    wandb.config.update({
-        "total_parameters": total_params,
-        "trainable_parameters": trainable_params,
-        "trainable_parameters_ratio": ratio
-    })
-
-    config = wandb.config
-    wandb.watch_called = False
     
     
     # MARK: TRAINING

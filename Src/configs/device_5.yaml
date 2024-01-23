@@ -2,11 +2,11 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [original_aug_lossw_nosmooth]
+    values: [original_aug_lossw.001_smooth0.3]
   sweep:
     values: [1]
   lr:
-    values: [0.0001] #0.001, 0.00001,
+    values: [0.001] #0.001, 0.00001,
   num_heads:
     values: [3,27] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim
   num_layers_1:
@@ -26,7 +26,7 @@ parameters:
   is_weighted:
     values: [1]
   label_smoothing:
-    values: [0]
+    values: [0.3]
   early_stopping_patience:
     values: [500]
   epochs:
