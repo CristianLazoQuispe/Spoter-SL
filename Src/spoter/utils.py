@@ -33,14 +33,18 @@ def train_epoch(model, dataloader, criterion, optimizer, device, scheduler=None,
         if i < 2:
             print("len inputs_total:",len(inputs_total))
         for inputs, labels in zip(inputs_total,labels_total):
+            if i==0:
+                print("labels :",labels)
+
             inputs  = torch.tensor(inputs).unsqueeze(0).to(device)
             labels  = torch.tensor(labels).unsqueeze(0).to(device)
             inputs = inputs.squeeze(0).to(device)
+            if i==0:
+                print("labels :",labels)
             labels = labels.to(device, dtype=torch.long)
             if i==0:
                 print("labels :",labels)
 
-            #outputs = model.forward(inputs,show=(i<5 and epoch==0)).expand(1, -1, -1)
             outputs = model(inputs).expand(1, -1, -1)
             loss = criterion(outputs[0], labels[0])
             running_loss += loss
