@@ -2,19 +2,19 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [no_aug_no_m_loss_w]
+    values: [original_losswe]
   sweep:
     values: [1]
   lr:
-    values: [0.00001] #0.001, 0.00001,
+    values: [0.0001] #0.001, 0.00001,
   num_heads:
-    values: [18,27] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim
+    values: [3] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim
   num_layers_1:
-    values: [18,27] # [64,12,8,6,4,2,1]
+    values: [9] # [64,12,8,6,4,2,1]
   num_layers_2:
-    values: [18,27] # [128,64,32,16,4,,64,12,8,6,4,2,1] # self.transformer.decoder.num_layers
+    values: [3] # [128,64,32,16,4,,64,12,8,6,4,2,1] # self.transformer.decoder.num_layers
   dim_feedforward:
-    values: [128,256] #
+    values: [64] #
   device:
     values: [0]
   augmentation:
@@ -26,6 +26,6 @@ parameters:
   is_weighted:
     values: [1]
   label_smoothing:
-    values: [0]
+    values: [0.1]
 
 #python train.py --device=0 --dim_feedforward=128 --lr=0.0001 --num_heads=54 --num_layers_1=32 --num_layers_2=256 --sweep=1 --augmentation=1
