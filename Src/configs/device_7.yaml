@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [original_aug_bmean4_lossw.001_nosmooth]
+    values: [original_aug_bmean4_lossw.001_si_squared2_nosmooth]
   sweep:
     values: [1]
   lr:
@@ -31,5 +31,8 @@ parameters:
     values: [500]
   epochs:
     values: [50000]
-  
+  is_weighted_squared:
+    values: [1]
+  weighted_squared:
+    values: [3]
 #python train.py --device=0 --dim_feedforward=128 --lr=0.0001 --num_heads=54 --num_layers_1=32 --num_layers_2=256 --sweep=1 --augmentation=1
