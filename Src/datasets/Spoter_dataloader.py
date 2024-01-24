@@ -177,7 +177,7 @@ class LSP_Dataset(Dataset):
 
     def __init__(self, dataset_filename: str,keypoints_model:str,  transform=None, have_aumentation=True,
                  augmentations_prob=0.5, normalize=False,landmarks_ref= 'Data/Mapeo landmarks librerias.csv',
-                dict_labels_dataset=None,inv_dict_labels_dataset=None, keypoints_number = 54):
+                dict_labels_dataset=None,inv_dict_labels_dataset=None, keypoints_number = 54,factor = 2):
         """
         Initiates the HPOESDataset with the pre-loaded data from the h5 file.
 
@@ -220,8 +220,9 @@ class LSP_Dataset(Dataset):
         self.video_name = video_name_dataset
         self.labels = encoded_dataset
         self.label_freq = Counter(self.labels)
+        self.factor = factor
 
-        max_frequency = 2*max(self.label_freq.values())
+        max_frequency = self.factor*max(self.label_freq.values())
 
         # Calcular los factores de ajuste
         self.factors = {label: max_frequency / count for label, count in self.label_freq.items()}
@@ -266,9 +267,11 @@ class LSP_Dataset(Dataset):
                 depth_map = self.augmentation.augment_arm_joint_rotate(depth_map, 0.3, angle_range=(-4, 4))
         video_name = self.video_name[idx].decode('utf-8')
         label = torch.Tensor([self.labels[idx]])
-        depth_map = depth_map - 0.5
-        if self.transform:
-            depth_map = self.transform(depth_map)
+
+        if not self.have_aumentation:
+            depth_map = depth_map - 0.5
+            if self.transform:
+                depth_map = self.transform(depth_map)
             
         depth_map = depth_map.to('cuda')
         label = label.to('cuda')
