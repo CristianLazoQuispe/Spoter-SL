@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [original_bmean32_los0.001]
+    values: [original_bmean4_los0.001]
   sweep:
     values: [1]
   lr:
@@ -22,7 +22,7 @@ parameters:
   batch_mean:
     values: [1]
   batch_size:
-    values: [32]
+    values: [4]
   is_weighted:
     values: [0]
   label_smoothing:

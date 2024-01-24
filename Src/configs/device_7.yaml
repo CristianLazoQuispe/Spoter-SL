@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [original_aug_bmean4_lossw.001_si_squared2_nosmooth]
+    values: [original_aug_bmean4_lossw.001_si_squared3_nosmooth]
   sweep:
     values: [1]
   lr:

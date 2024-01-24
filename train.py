@@ -300,6 +300,7 @@ def train(args):
     if args.is_weighted:
         if args.is_weighted_squared:
             # CLASS WEIGHT
+            print("train_set.factors",train_set.factors)
             factors = [train_set.factors[i]**args.weighted_squared for i in range(args.num_classes)]
             min_factor = min(factors)
             factors = [value/min_factor for value in factors]
@@ -360,7 +361,7 @@ def train(args):
 
     config = wandb.config
     wandb.watch_called = False
-    
+
     
     # MARK: TRAINING
     train_acc, val_acc = 0, 0
