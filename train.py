@@ -11,6 +11,8 @@ import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+from sklearn.metrics import roc_auc_score
+from sklearn.preprocessing import label_binarize
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from pathlib import Path
@@ -93,8 +95,9 @@ def get_default_args():
                         help="Determines whether to save weights checkpoints")
 
     # Scheduler
-    parser.add_argument("--scheduler_factor", type=int, default=0.1, help="Factor for the ReduceLROnPlateau scheduler")
-    parser.add_argument("--scheduler_patience", type=int, default=5,
+    parser.add_argument("--scheduler", type=str, default="", help="Factor for the steplr plateu scheduler")
+    parser.add_argument("--scheduler_factor", type=int, default=0.5, help="Factor for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--scheduler_patience", type=int, default=10,
                         help="Patience for the ReduceLROnPlateau scheduler")
 
     # Gaussian noise normalization
@@ -115,6 +118,8 @@ def get_default_args():
     parser.add_argument("--transfer_learning", type=str, default="",help="path to retrieve the model for transfer learning")
     parser.add_argument("--augmentation", type=int, default=0,
                         help="Augmentations")
+    parser.add_argument("--factor_aug", type=int, default=2,
+                        help="factor para multiplicar los datos de augmentation")
     parser.add_argument("--batch_mean", type=int, default=0,
                         help="batch_mean flag")    
     parser.add_argument("--batch_size", type=int, default=0,
@@ -209,7 +214,7 @@ def train(args):
     transform = transforms.Compose([GaussianNoise(args.gaussian_mean, args.gaussian_std)])
     
     if args.augmentation:
-        train_set = LSP_Dataset(args.training_set_path, transform=transform, have_aumentation=False, keypoints_model='mediapipe')
+        train_set = LSP_Dataset(args.training_set_path, transform=transform, have_aumentation=False, keypoints_model='mediapipe',factor=args.factor_aug)
     else:
         train_set = LSP_Dataset(args.training_set_path, transform=transform, have_aumentation=True, keypoints_model='mediapipe')
 
@@ -257,7 +262,9 @@ def train(args):
                             dim_feedforward=args.dim_feedforward)
         checkpoint = torch.load(args.continue_training)
         slrt_model.load_state_dict(checkpoint['model_state_dict'])
+
         sgd_optimizer = optim.SGD(slrt_model.parameters(), lr=args.lr)
+
         sgd_optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch_start = checkpoint['epoch']
 
@@ -323,6 +330,13 @@ def train(args):
 
     #scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, factor=args.scheduler_factor, patience=args.scheduler_patience)
     #scheduler = optim.lr_scheduler.LambdaLR(sgd_optimizer, lr_lambda=lr_lambda)
+    lr_scheduler = None
+
+    if args.scheduler == 'steplr':
+        lr_scheduler = lr_scheduler.StepLR(sgd_optimizer, step_size=1, gamma=0.99)
+    if args.scheduler == 'plateu':
+        lr_scheduler = lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='min', factor=0.5, patience=10, verbose=True)
+
 
     # Ensure that the path for checkpointing and for images both exist
     Path("Results/").mkdir(parents=True, exist_ok=True)
@@ -395,9 +409,13 @@ def train(args):
         #sgd_optimizer = lr_lambda(epoch, sgd_optimizer)
         start_time = time.time()
 
-        train_loss, _, _, train_acc,train_stats,train_labels_original,train_labels_predicted = train_epoch(slrt_model, train_loader, cel_criterion, sgd_optimizer, device,epoch=epoch,args=args)
+        current_lr = sgd_optimizer.param_groups[0]["lr"]
+
+        train_loss, _, _, train_acc,train_stats,train_labels_original,train_labels_predicted = train_epoch(slrt_model, train_loader, cel_criterion, sgd_optimizer,device,epoch=epoch,args=args)
         losses.append(train_loss.item())
         train_accs.append(train_acc)
+        # Obtener la tasa de aprendizaje actual
+
 
         if val_loader:
             slrt_model.train(False)
@@ -446,8 +464,14 @@ def train(args):
         total_time = time.time()-start_time
 
 
+        if args.scheduler == 'steplr':
+            lr_scheduler.step()
+        if args.scheduler == 'plateu':
+            lr_scheduler.step(val_loss)
+            
         if val_loader:
             log_values = {
+                'current_lr':current_lr,
                 'train_acc': train_acc,
                 'train_loss': train_loss,
                 'val_acc': val_acc,

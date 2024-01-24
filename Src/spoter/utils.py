@@ -6,7 +6,7 @@ import csv
 import wandb
 import tqdm
 
-def train_epoch(model, dataloader, criterion, optimizer, device, scheduler=None,clip_grad_max_norm=1.0,epoch=0,args=None):
+def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_norm=1.0,epoch=0,args=None):
 
     k = 5
     
@@ -92,10 +92,6 @@ def train_epoch(model, dataloader, criterion, optimizer, device, scheduler=None,
         averaged_loss.backward()
         nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
         optimizer.step()
-        
-    if scheduler:
-        #scheduler.step(running_loss.item() / len(dataloader))
-        scheduler.step()
 
     return running_loss/pred_all, pred_correct, pred_all, (pred_correct / pred_all),stats,labels_original,labels_predicted
 
