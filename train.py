@@ -123,6 +123,8 @@ def get_default_args():
                         help="Loss crossentropy weighted ")
     parser.add_argument("--is_weighted_squared", type=int, default=0,
                         help="Loss crossentropy weighted ")
+    parser.add_argument("--weighted_squared", type=int, default=1,
+                        help="Loss crossentropy weighted ")
     parser.add_argument("--label_smoothing", type=float, default=0,
                         help="Loss crossentropy weighted ")
                                                 
@@ -168,15 +170,6 @@ def train(args):
                      tags=["paper"])
 
 
-    # Log the parameters to wandb
-    wandb.config.update({
-        "total_parameters": total_params,
-        "trainable_parameters": trainable_params,
-        "trainable_parameters_ratio": ratio
-    })
-
-    config = wandb.config
-    wandb.watch_called = False
     
     # Initialize all the random seeds
     random.seed(args.seed)
@@ -307,7 +300,7 @@ def train(args):
     if args.is_weighted:
         if args.is_weighted_squared:
             # CLASS WEIGHT
-            factors = [train_set.factors[i]**2 for i in range(args.num_classes)]
+            factors = [train_set.factors[i]**args.weighted_squared for i in range(args.num_classes)]
             min_factor = min(factors)
             factors = [value/min_factor for value in factors]
             class_weight = torch.FloatTensor(factors).to(device)
@@ -357,6 +350,16 @@ def train(args):
     print("#"*50)
 
 
+
+    # Log the parameters to wandb
+    wandb.config.update({
+        "total_parameters": total_params,
+        "trainable_parameters": trainable_params,
+        "trainable_parameters_ratio": ratio
+    })
+
+    config = wandb.config
+    wandb.watch_called = False
     
     
     # MARK: TRAINING
