@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [original_aug_lossw.001_smooth0.3]
+    values: [original_true_aug_lossw_squared4]
   sweep:
     values: [1]
   lr:
@@ -16,20 +16,28 @@ parameters:
   dim_feedforward:
     values: [64,128] #
   device:
-    values: [1]
+    values: [0]
   augmentation:
+    values: [1]
+  factor_aug:
     values: [1]
   batch_mean:
     values: [0]
   batch_size:
     values: [16]
-  is_weighted:
-    values: [1]
   label_smoothing:
-    values: [0.3]
+    values: [0]
   early_stopping_patience:
     values: [500]
   epochs:
     values: [50000]
-  
+  is_weighted:
+    values: [1]
+  is_weighted_squared:
+    values: [1]
+  weighted_squared:
+    values: [4]
+  scheduler:
+    values: [""]
+
 #python train.py --device=0 --dim_feedforward=128 --lr=0.0001 --num_heads=54 --num_layers_1=32 --num_layers_2=256 --sweep=1 --augmentation=1
