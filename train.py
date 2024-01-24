@@ -333,9 +333,9 @@ def train(args):
     lr_scheduler = None
 
     if args.scheduler == 'steplr':
-        lr_scheduler = lr_scheduler.StepLR(sgd_optimizer, step_size=1, gamma=0.99)
+        lr_scheduler = optim.lr_scheduler.StepLR(sgd_optimizer, step_size=1, gamma=0.99)
     if args.scheduler == 'plateu':
-        lr_scheduler = lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='min', factor=0.5, patience=10, verbose=True)
+        lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='min', factor=0.5, patience=10, verbose=True)
 
 
     # Ensure that the path for checkpointing and for images both exist
