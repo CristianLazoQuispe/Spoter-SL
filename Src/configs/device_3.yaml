@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [Aug_Loss:w.01_pow3_Lr:pl_Op:adam_Dout:0.3]
+    values: [Aug:No_Loss:w.01_pow3_Lr:pl_Op:adam_Dout:0.3]
   sweep:
     values: [1]
   lr:
@@ -25,18 +25,14 @@ parameters:
     values: [0]
   batch_size:
     values: [16]
-  is_weighted:
-    values: [1]
+  loss_weighted_factor:
+    values: [3]
   label_smoothing:
     values: [0.1]
   early_stopping_patience:
     values: [500]
   epochs:
     values: [50000]
-  is_weighted_squared:
-    values: [1]
-  weighted_squared:
-    values: [3]
   scheduler:
     values: ["plateu"]
   optimizer:

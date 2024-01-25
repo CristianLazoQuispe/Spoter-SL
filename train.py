@@ -97,7 +97,7 @@ def get_default_args():
     # Scheduler
     parser.add_argument("--scheduler", type=str, default="", help="Factor for the steplr plateu scheduler")
     parser.add_argument("--scheduler_factor", type=int, default=0.95, help="Factor for the ReduceLROnPlateau scheduler")
-    parser.add_argument("--scheduler_patience", type=int, default=10,
+    parser.add_argument("--scheduler_patience", type=int, default=5,
                         help="Patience for the ReduceLROnPlateau scheduler")
 
     # Gaussian noise normalization
@@ -124,11 +124,7 @@ def get_default_args():
                         help="batch_mean flag")    
     parser.add_argument("--batch_size", type=int, default=0,
                         help="batch_size ")
-    parser.add_argument("--is_weighted", type=int, default=0,
-                        help="Loss crossentropy weighted ")
-    parser.add_argument("--is_weighted_squared", type=int, default=0,
-                        help="Loss crossentropy weighted ")
-    parser.add_argument("--weighted_squared", type=int, default=1,
+    parser.add_argument("--loss_weighted_factor", type=int, default=1,
                         help="Loss crossentropy weighted ")
     parser.add_argument("--label_smoothing", type=float, default=0,
                         help="Loss crossentropy weighted ")
@@ -325,7 +321,7 @@ def train(args):
     lr_scheduler = None
 
     if args.scheduler == 'steplr':
-        lr_scheduler = optim.lr_scheduler.StepLR(sgd_optimizer, step_size=10, gamma=0.9995)
+        lr_scheduler = optim.lr_scheduler.StepLR(sgd_optimizer, step_size=5, gamma=0.9995)
     if args.scheduler == 'plateu':
         lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='min', factor=args.scheduler_factor, patience=args.scheduler_patience, verbose=True)
 
@@ -399,23 +395,16 @@ def train(args):
 
     
     # LABEL SMOOTHING IN CRITERION
-    if args.is_weighted:
-        if args.is_weighted_squared:
-            # CLASS WEIGHT
-            print("train_set.factors",train_set.factors)
-            factors = [train_set.factors[i]**args.weighted_squared for i in range(args.num_classes)]
-            min_factor = min(factors)
-            factors = [value/min_factor for value in factors]
-            class_weight = torch.FloatTensor(factors).to(device)
-            print("\\\\\\"*20)
-            print("class_weight:",class_weight)
-            cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing, weight=class_weight)
-        else:
-            # CLASS WEIGHT
-            class_weight = torch.FloatTensor([train_set.factors[i] for i in range(args.num_classes)]).to(device)
-            print("\\\\\\"*20)
-            print("class_weight:",class_weight)
-            cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing, weight=class_weight)    
+    if args.loss_weighted_factor!=0:
+        # CLASS WEIGHT
+        print("train_set.factors",train_set.factors)
+        factors = [train_set.factors[i]**args.loss_weighted_factor for i in range(args.num_classes)]
+        min_factor = min(factors)
+        factors = [value/min_factor for value in factors]
+        class_weight = torch.FloatTensor(factors).to(device)
+        print("\\\\\\"*20)
+        print("class_weight:",class_weight)
+        cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing, weight=class_weight)
     else:
         cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)#, weight=class_weight)
     #cel_criterion = nn.CrossEntropyLoss()
