@@ -309,7 +309,7 @@ def train(args):
                             num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
                             dim_feedforward=args.dim_feedforward,dropout=args.dropout)
         if args.optimizer == 'adam':
-            sgd_optimizer = optim.Adam(slrt_model.parameters(), weight_decay=args.weight_decay)
+            sgd_optimizer = optim.Adam(slrt_model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
         else:
             sgd_optimizer = optim.SGD(slrt_model.parameters(), lr=args.lr)
 
