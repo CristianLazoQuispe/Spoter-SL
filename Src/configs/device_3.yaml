@@ -17,7 +17,7 @@ parameters:
     values: [64,128] #
   device:
     values: [0]
-  augmentation:
+  augmentation:d
     values: [0]
   factor_aug:
     values: [1]
