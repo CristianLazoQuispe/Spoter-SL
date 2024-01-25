@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [original_bmean4_losswe.01_no_smot_si_squared3_plateu]
+    values: [original_true_bmean16_aug_losswe.01_no_smot_si_squared3_plateu]
   sweep:
     values: [1]
   lr:
@@ -18,13 +18,13 @@ parameters:
   device:
     values: [0]
   augmentation:
-    values: [0]
+    values: [1]
   factor_aug:
     values: [1]
   batch_mean:
     values: [1]
   batch_size:
-    values: [4]
+    values: [16]
   is_weighted:
     values: [1]
   label_smoothing:

@@ -25,29 +25,20 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
 
     optimizer.zero_grad()
 
-    for i, data in tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Train Epoch {epoch + 1}'):
+    for i, data in tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Train Epoch {epoch + 1}',bar_format='{desc:<25.25}{percentage:3.0f}%|{bar:20}{r_bar}'):
         #print("data:",data)
         inputs_total, labels_total, _ = data
         if inputs_total is None:
             break
-        if i < 2:
-            print("len inputs_total:",len(inputs_total))
-        for j, (inputs, labels) in enumerate(zip(inputs_total,labels_total)):
-            #if i==0:
-            #    print("labels :",labels)
+        if i < 2 and epoch==0:
+            print("")
+            print("max inputs:", torch.max(inputs_total).item())
+            print("min inputs:", torch.min(inputs_total).item())
+            print("std inputs:", torch.std(inputs_total).item())
 
-            inputs  = torch.tensor(inputs).unsqueeze(0).to(device)
-            labels  = torch.tensor(labels).unsqueeze(0).to(device)
-            inputs = inputs.squeeze(0).to(device)
-            #if i==0:
-            #    print("labels :",labels)
-            labels = labels.to(device, dtype=torch.long)
-            if i==0 and j==0:
-                print("labels :",labels)
-                print("max inputs:", torch.max(inputs).item())
-                print("min inputs:", torch.min(inputs).item())
-                print("mean inputs:", torch.mean(inputs).item())
-                print("std inputs:", torch.std(inputs).item())
+
+        for j, (inputs, labels) in enumerate(zip(inputs_total,labels_total)):
+            labels = labels.unsqueeze(0)
             outputs = model(inputs).expand(1, -1, -1)
             loss = criterion(outputs[0], labels[0])
             running_loss += loss
@@ -99,7 +90,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
     return running_loss/pred_all, pred_correct, pred_all, (pred_correct / pred_all),stats,labels_original,labels_predicted
 
 
-def evaluate(model, dataloader, cel_criterion, device,epoch=0,args=None):
+def evaluate(model, dataloader, criterion, device,epoch=0,args=None):
 
     pred_correct, pred_top_5,  pred_all = 0, 0, 0
     running_loss = 0.0
@@ -110,40 +101,40 @@ def evaluate(model, dataloader, cel_criterion, device,epoch=0,args=None):
     labels_original = []
     labels_predicted = []
 
-    for i, data in tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Evaludate Epoch {epoch + 1}'):
-        inputs, labels, _ = data
-        inputs = inputs.squeeze(0).to(device)
-        labels = labels.to(device, dtype=torch.long)
-        #print(f"iteration {i} in evaluate")
-        outputs = model(inputs).expand(1, -1, -1)
+    for i, data in tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Evaludate Epoch {epoch + 1}:',bar_format='{desc:<25.20}{percentage:3.0f}%|{bar:20}{r_bar}'):
 
-        if i<2:
-            print("labels :",labels)
-            print("max inputs:", torch.max(inputs).item())
-            print("min inputs:", torch.min(inputs).item())
-            print("mean inputs:", torch.mean(inputs).item())
-            print("std inputs:", torch.std(inputs).item())
+        #print("data:",data)
+        inputs_total, labels_total, _ = data
+        if inputs_total is None:
+            break
+        if i < 2 and epoch==0:
+            print("")
+            print("max inputs:", torch.max(inputs_total).item())
+            print("min inputs:", torch.min(inputs_total).item())
+            print("std inputs:", torch.std(inputs_total).item())
+        
+        for j, (inputs, labels) in enumerate(zip(inputs_total,labels_total)):
+            labels = labels.unsqueeze(0)
+            outputs = model(inputs).expand(1, -1, -1)
+            loss = criterion(outputs[0], labels[0])
+            running_loss += loss
+
+            label_original = int(labels[0][0])
+            label_predicted = int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2)))
+
+            labels_predicted.append(label_predicted)
+            labels_original.append(label_original)
             
-        loss = cel_criterion(outputs[0], labels[0])
-        running_loss += loss
-        
+            # Statistics
+            if label_predicted == label_original:
+                stats[label_original][0] += 1
+                pred_correct += 1
+            
+            if label_original in torch.topk(torch.reshape(outputs, (-1,)), k).indices.tolist():
+                pred_top_5 += 1
 
-        label_original = int(labels[0][0])
-        label_predicted = int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2)))
-
-        labels_predicted.append(label_predicted)
-        labels_original.append(label_original)
-        
-        # Statistics
-        if label_predicted == label_original:
-            stats[label_original][0] += 1
-            pred_correct += 1
-        
-        if label_original in torch.topk(torch.reshape(outputs, (-1,)), k).indices.tolist():
-            pred_top_5 += 1
-
-        stats[label_original][1] += 1
-        pred_all += 1
+            stats[label_original][1] += 1
+            pred_all += 1
 
     return running_loss/pred_all, pred_correct, pred_all, (pred_correct / pred_all), (pred_top_5 / pred_all), stats,labels_original,labels_predicted
 
@@ -240,6 +231,7 @@ def generate_csv_result(run, model, dataloader, folder_path, meaning, device):
 
     for i, data in enumerate(dataloader):
         inputs, labels, video_name = data
+
         inputs = inputs.squeeze(0).to(device)
         labels = labels.to(device, dtype=torch.long)
         outputs = model(inputs).expand(1, -1, -1)

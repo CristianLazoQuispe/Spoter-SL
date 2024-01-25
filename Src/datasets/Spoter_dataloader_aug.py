@@ -50,12 +50,12 @@ class AugmentedDataLoaderIterator:
                         depth_map = self.dataset.augmentation.augment_arm_joint_rotate(depth_map_original, 0.3, angle_range=(-4, 4))
 
                 depth_map = depth_map - 0.5
-                depth_map = depth_map.to('cuda')
+                #depth_map = depth_map.to('cuda')
                 if self.dataset.transform:
                     depth_map = self.dataset.transform(depth_map)
                     
-                depth_map = depth_map.to('cuda')
-                label = label.to('cuda')
+                #depth_map = depth_map.to('cuda')
+                #label = label.to('cuda', dtype=torch.long)
 
                 sample = (depth_map, label, video_name)
                 batch.append(sample)
