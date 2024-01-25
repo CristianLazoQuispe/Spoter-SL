@@ -247,8 +247,9 @@ class LSP_Dataset(Dataset):
         :param idx: Index of the item
         :return: Tuple containing both the depth map and the label
         """
-        depth_map = torch.from_numpy(np.copy(self.data[idx]))
-        depth_map = depth_map.to('cuda')
+        #depth_map = torch.from_numpy(np.copy(self.data[idx]))
+        #depth_map = depth_map.to('cuda')
+        depth_map = torch.tensor(self.data[idx], device='cuda')#.clone()
 
         # Apply potential augmentations
         if self.have_aumentation and random.random() < self.augmentations_prob:
@@ -275,7 +276,7 @@ class LSP_Dataset(Dataset):
                 depth_map = self.transform(depth_map)
             
         depth_map = depth_map.to('cuda')
-        label = label.to('cuda')
+        label = label.to('cuda', dtype=torch.long)
 
         return depth_map, label, video_name
 

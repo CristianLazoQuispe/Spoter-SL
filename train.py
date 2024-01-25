@@ -96,13 +96,13 @@ def get_default_args():
 
     # Scheduler
     parser.add_argument("--scheduler", type=str, default="", help="Factor for the steplr plateu scheduler")
-    parser.add_argument("--scheduler_factor", type=int, default=0.5, help="Factor for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--scheduler_factor", type=int, default=0.95, help="Factor for the ReduceLROnPlateau scheduler")
     parser.add_argument("--scheduler_patience", type=int, default=10,
                         help="Patience for the ReduceLROnPlateau scheduler")
 
     # Gaussian noise normalization
     parser.add_argument("--gaussian_mean", type=int, default=0, help="Mean parameter for Gaussian noise layer")
-    parser.add_argument("--gaussian_std", type=int, default=0.00001,
+    parser.add_argument("--gaussian_std", type=int, default=0.001,
                         help="Standard deviation parameter for Gaussian noise layer")
 
     # Visualization
@@ -224,9 +224,15 @@ def train(args):
 
     # Validation set
     if args.validation_set == "from-file":
-        val_set = LSP_Dataset(args.validation_set_path, keypoints_model='mediapipe', have_aumentation=False,has_normalization=True)
+        if args.augmentation:
+            print("AUGMENTATION UN VALIDATION")
+            val_set = LSP_Dataset(args.validation_set_path, keypoints_model='mediapipe', have_aumentation=False,has_normalization=False,factor=args.factor_aug)
+            val_loader = AugmentedDataLoader(val_set, shuffle=True, generator=g)
+        else:
+            print("NO AUGMENTATION UN VALIDATION")
+            val_set = LSP_Dataset(args.validation_set_path, keypoints_model='mediapipe', have_aumentation=False,has_normalization=True)
         
-        val_loader = DataLoader(val_set, shuffle=True, generator=g)
+            val_loader = DataLoader(val_set, shuffle=True, generator=g)
 
     elif args.validation_set == "split-from-train":
         train_set, val_set = __balance_val_split(train_set, 0.2)
@@ -310,41 +316,16 @@ def train(args):
 
     # Construct the other modules
     
-    
-    # LABEL SMOOTHING IN CRITERION
-    if args.is_weighted:
-        if args.is_weighted_squared:
-            # CLASS WEIGHT
-            print("train_set.factors",train_set.factors)
-            factors = [train_set.factors[i]**args.weighted_squared for i in range(args.num_classes)]
-            min_factor = min(factors)
-            factors = [value/min_factor for value in factors]
-            class_weight = torch.FloatTensor(factors).to(device)
-            print("\\\\\\"*20)
-            print("class_weight:",class_weight)
-            cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing, weight=class_weight)    
 
-        else:
-            # CLASS WEIGHT
-            class_weight = torch.FloatTensor([train_set.factors[i] for i in range(args.num_classes)]).to(device)
-            print("\\\\\\"*20)
-            print("class_weight:",class_weight)
-            cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing, weight=class_weight)    
-    else:
-        cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)#, weight=class_weight)
-    #cel_criterion = nn.CrossEntropyLoss()
-    
     
     epoch_start = 0
 
-    #scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, factor=args.scheduler_factor, patience=args.scheduler_patience)
-    #scheduler = optim.lr_scheduler.LambdaLR(sgd_optimizer, lr_lambda=lr_lambda)
     lr_scheduler = None
 
     if args.scheduler == 'steplr':
-        lr_scheduler = optim.lr_scheduler.StepLR(sgd_optimizer, step_size=1, gamma=0.9995)
+        lr_scheduler = optim.lr_scheduler.StepLR(sgd_optimizer, step_size=10, gamma=0.9995)
     if args.scheduler == 'plateu':
-        lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='min', factor=0.99, patience=100, verbose=True)
+        lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='min', factor=args.scheduler_factor, patience=args.scheduler_patience, verbose=True)
 
 
     # Ensure that the path for checkpointing and for images both exist
@@ -413,6 +394,31 @@ def train(args):
     print("args.augmentation:",args.augmentation)
     if args.augmentation:
         print("AUGMENTATION IS USED")
+
+    
+    # LABEL SMOOTHING IN CRITERION
+    if args.is_weighted:
+        if args.is_weighted_squared:
+            # CLASS WEIGHT
+            print("train_set.factors",train_set.factors)
+            factors = [train_set.factors[i]**args.weighted_squared for i in range(args.num_classes)]
+            min_factor = min(factors)
+            factors = [value/min_factor for value in factors]
+            class_weight = torch.FloatTensor(factors).to(device)
+            print("\\\\\\"*20)
+            print("class_weight:",class_weight)
+            cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing, weight=class_weight)
+        else:
+            # CLASS WEIGHT
+            class_weight = torch.FloatTensor([train_set.factors[i] for i in range(args.num_classes)]).to(device)
+            print("\\\\\\"*20)
+            print("class_weight:",class_weight)
+            cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing, weight=class_weight)    
+    else:
+        cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)#, weight=class_weight)
+    #cel_criterion = nn.CrossEntropyLoss()
+    
+    
     for epoch in range(epoch_start, args.epochs):
 
         #sgd_optimizer = lr_lambda(epoch, sgd_optimizer)
@@ -514,8 +520,8 @@ def train(args):
 
                 if val_loader:
 
-                    log_values['Train_table_stats']  = wandb.Table(dataframe=df_train_stats)
-                    log_values['Val_table_stats'] =  wandb.Table(dataframe=df_val_stats)
+                    log_values['Train_table_stats']   = wandb.Table(dataframe=df_train_stats)
+                    log_values['Val_table_stats']     =  wandb.Table(dataframe=df_val_stats)
                     log_values['Compare_table_stats'] =  wandb.Table(dataframe=df_merged)
 
 
@@ -529,9 +535,9 @@ def train(args):
                     'loss': train_loss
                 }, model_save_folder_path + "/checkpoint_best_model.pth")
                 
-                generate_csv_result(run, slrt_model, val_loader, model_save_folder_path, val_set.inv_dict_labels_dataset, device)
-                generate_csv_accuracy(df_train_stats, model_save_folder_path,name='/train_accuracy.csv')
-                generate_csv_accuracy(df_val_stats, model_save_folder_path,name='/evaluate_accuracy.csv')
+                #generate_csv_result(run, slrt_model, val_loader, model_save_folder_path, val_set.inv_dict_labels_dataset, device)
+                #generate_csv_accuracy(df_train_stats, model_save_folder_path,name='/train_accuracy.csv')
+                #generate_csv_accuracy(df_val_stats, model_save_folder_path,name='/evaluate_accuracy.csv')
                 
                 artifact = wandb.Artifact(f'best-model_{run.id}.pth', type='model')
                 artifact.add_file(model_save_folder_path + "/checkpoint_best_model.pth")
