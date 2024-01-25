@@ -32,19 +32,22 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
             break
         if i < 2:
             print("len inputs_total:",len(inputs_total))
-        for inputs, labels in zip(inputs_total,labels_total):
-            if i==0:
-                print("labels :",labels)
+        for j, (inputs, labels) in enumerate(zip(inputs_total,labels_total)):
+            #if i==0:
+            #    print("labels :",labels)
 
             inputs  = torch.tensor(inputs).unsqueeze(0).to(device)
             labels  = torch.tensor(labels).unsqueeze(0).to(device)
             inputs = inputs.squeeze(0).to(device)
-            if i==0:
-                print("labels :",labels)
+            #if i==0:
+            #    print("labels :",labels)
             labels = labels.to(device, dtype=torch.long)
-            if i==0:
+            if i==0 and j==0:
                 print("labels :",labels)
-
+                print("max inputs:", torch.max(inputs).item())
+                print("min inputs:", torch.min(inputs).item())
+                print("mean inputs:", torch.mean(inputs).item())
+                print("std inputs:", torch.std(inputs).item())
             outputs = model(inputs).expand(1, -1, -1)
             loss = criterion(outputs[0], labels[0])
             running_loss += loss
@@ -114,6 +117,13 @@ def evaluate(model, dataloader, cel_criterion, device,epoch=0,args=None):
         #print(f"iteration {i} in evaluate")
         outputs = model(inputs).expand(1, -1, -1)
 
+        if i<2:
+            print("labels :",labels)
+            print("max inputs:", torch.max(inputs).item())
+            print("min inputs:", torch.min(inputs).item())
+            print("mean inputs:", torch.mean(inputs).item())
+            print("std inputs:", torch.std(inputs).item())
+            
         loss = cel_criterion(outputs[0], labels[0])
         running_loss += loss
         

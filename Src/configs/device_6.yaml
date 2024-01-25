@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [original_true_aug_mean_16_lossw_squared4]
+    values: [original_true_aug_mean_4_lossw_squared2]
   sweep:
     values: [1]
   lr:
@@ -24,7 +24,7 @@ parameters:
   batch_mean:
     values: [1]
   batch_size:
-    values: [16]
+    values: [4]
   label_smoothing:
     values: [0]
   early_stopping_patience:
@@ -36,7 +36,7 @@ parameters:
   is_weighted_squared:
     values: [1]
   weighted_squared:
-    values: [4]
+    values: [2]
   scheduler:
     values: [""]
 

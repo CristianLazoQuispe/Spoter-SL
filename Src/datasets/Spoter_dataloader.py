@@ -175,7 +175,7 @@ class LSP_Dataset(Dataset):
     data: [np.ndarray]  # type: ignore
     labels: [np.ndarray]  # type: ignore
 
-    def __init__(self, dataset_filename: str,keypoints_model:str,  transform=None, have_aumentation=True,
+    def __init__(self, dataset_filename: str,keypoints_model:str,  transform=None, have_aumentation=False,has_normalization=False,
                  augmentations_prob=0.5, normalize=False,landmarks_ref= 'Data/Mapeo landmarks librerias.csv',
                 dict_labels_dataset=None,inv_dict_labels_dataset=None, keypoints_number = 54,factor = 2):
         """
@@ -190,6 +190,7 @@ class LSP_Dataset(Dataset):
         print('Use keypoint model : ',keypoints_model) 
         logging.info('Use keypoint model : '+str(keypoints_model))
 
+        self.has_normalization = has_normalization
         self.list_labels_banned = []
 
         if  'AEC' in  dataset_filename:
@@ -268,7 +269,7 @@ class LSP_Dataset(Dataset):
         video_name = self.video_name[idx].decode('utf-8')
         label = torch.Tensor([self.labels[idx]])
 
-        if not self.have_aumentation:
+        if self.has_normalization:
             depth_map = depth_map - 0.5
             if self.transform:
                 depth_map = self.transform(depth_map)
