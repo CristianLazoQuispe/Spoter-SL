@@ -214,13 +214,13 @@ def train(args):
     transform = transforms.Compose([GaussianNoise(args.gaussian_mean, args.gaussian_std)])
     
     if args.augmentation:
-        train_set = LSP_Dataset(args.training_set_path, transform=transform, have_aumentation=False, keypoints_model='mediapipe',factor=args.factor_aug)
+        train_set = LSP_Dataset(args.training_set_path, transform=transform, have_aumentation=False,has_normalization=False, keypoints_model='mediapipe',factor=args.factor_aug)
     else:
-        train_set = LSP_Dataset(args.training_set_path, transform=transform, have_aumentation=True, keypoints_model='mediapipe')
+        train_set = LSP_Dataset(args.training_set_path, transform=transform, have_aumentation=True, has_normalization=True,keypoints_model='mediapipe')
 
     # Validation set
     if args.validation_set == "from-file":
-        val_set = LSP_Dataset(args.validation_set_path, keypoints_model='mediapipe', have_aumentation=False)
+        val_set = LSP_Dataset(args.validation_set_path, keypoints_model='mediapipe', have_aumentation=False,has_normalization=True)
         
         val_loader = DataLoader(val_set, shuffle=True, generator=g)
 
@@ -235,7 +235,7 @@ def train(args):
 
     # Testing set
     if args.testing_set_path:
-        eval_set = LSP_Dataset(args.testing_set_path, keypoints_model='mediapipe')
+        eval_set = LSP_Dataset(args.testing_set_path, keypoints_model='mediapipe', have_aumentation=False,has_normalization=True)
         eval_loader = DataLoader(eval_set, shuffle=True, generator=g)
     else:
         eval_loader = None
@@ -334,7 +334,7 @@ def train(args):
     lr_scheduler = None
 
     if args.scheduler == 'steplr':
-        lr_scheduler = optim.lr_scheduler.StepLR(sgd_optimizer, step_size=1, gamma=0.99)
+        lr_scheduler = optim.lr_scheduler.StepLR(sgd_optimizer, step_size=1, gamma=0.9995)
     if args.scheduler == 'plateu':
         lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='min', factor=0.99, patience=100, verbose=True)
 
@@ -499,15 +499,18 @@ def train(args):
 
 
 
-        if val_loader:
-            log_values['Train_table_stats']  = wandb.Table(dataframe=df_train_stats)
-            log_values['Val_table_stats'] =  wandb.Table(dataframe=df_val_stats)
-            log_values['Compare_table_stats'] =  wandb.Table(dataframe=df_merged)
-            wandb.log(log_values)
             
         # Save checkpoints if they are best in the current subset
         if args.save_checkpoints:
             if val_acc > top_val_acc:
+
+                if val_loader:
+
+                    log_values['Train_table_stats']  = wandb.Table(dataframe=df_train_stats)
+                    log_values['Val_table_stats'] =  wandb.Table(dataframe=df_val_stats)
+                    log_values['Compare_table_stats'] =  wandb.Table(dataframe=df_merged)
+
+
                 top_val_acc = val_acc
                 model_save_folder_path = "Results/checkpoints/" + args.experiment_name
 
@@ -529,6 +532,8 @@ def train(args):
 
                 checkpoint_index += 1
 
+        if val_loader:
+            wandb.log(log_values)
 
         if epoch % args.log_freq == 0:
             print("[" + str(epoch + 1) + "] TRAIN  loss: " + str(train_loss.item()) + " acc: " + str(train_acc))
