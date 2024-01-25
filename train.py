@@ -136,6 +136,8 @@ def get_default_args():
                         help="Loss crossentropy weighted ")
     parser.add_argument("--weight_decay", type=float, default=1e-3,
                         help="Loss crossentropy weighted ")
+    parser.add_argument("--dropout", type=float, default=0.1,
+                        help="dropout weighted ")                                                
                                                 
                            
 
@@ -305,7 +307,7 @@ def train(args):
         slrt_model = SPOTER(num_classes=args.num_classes, num_rows=args.num_rows,
                             hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
                             num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
-                            dim_feedforward=args.dim_feedforward)
+                            dim_feedforward=args.dim_feedforward,dropout=args.dropout)
         if args.optimizer == 'adam':
             sgd_optimizer = optim.Adam(slrt_model.parameters(), weight_decay=args.weight_decay)
         else:
@@ -418,7 +420,7 @@ def train(args):
         cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)#, weight=class_weight)
     #cel_criterion = nn.CrossEntropyLoss()
     
-    
+
     for epoch in range(epoch_start, args.epochs):
 
         #sgd_optimizer = lr_lambda(epoch, sgd_optimizer)

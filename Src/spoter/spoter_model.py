@@ -43,7 +43,7 @@ class SPOTER(nn.Module):
     of skeletal data.
     """
 
-    def __init__(self, num_classes, num_rows=64,hidden_dim=108, num_heads=9, num_layers_1=6, num_layers_2=6, dim_feedforward=256):
+    def __init__(self, num_classes, num_rows=64,hidden_dim=108, num_heads=9, num_layers_1=6, num_layers_2=6, dim_feedforward=256,dropout=0.3):
         super().__init__()
 
         self.row_embed_aux = nn.Parameter(torch.rand(num_rows, hidden_dim))
@@ -54,8 +54,10 @@ class SPOTER(nn.Module):
         self.linear_class = nn.Linear(hidden_dim, num_classes)
 
         custom_decoder_layer = SPOTERTransformerDecoderLayer(self.transformer.d_model, self.transformer.nhead,
-                                                             dim_feedforward, 0.1, "relu")
-        
+                                                             dim_feedforward, dropout=dropout, activation="relu")
+
+        self.dropout1 = nn.Dropout(dropout)
+
         print("=="*30)
         print("=="*30)
         print("=="*30)
@@ -91,6 +93,8 @@ class SPOTER(nn.Module):
         print(f"aux    shape: {aux.shape}") if show else None
         h = self.transformer(aux, self.class_query.unsqueeze(0)).transpose(0, 1)
         print(f"h      shape: {h.shape}") if show else None
+
+        h = self.dropout1(h) 
         res = self.linear_class(h)
         print(f"res    shape: {res.shape}") if show else None
         return res
