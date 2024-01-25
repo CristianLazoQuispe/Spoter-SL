@@ -25,67 +25,79 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
 
     optimizer.zero_grad()
 
-    for i, data in tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Train Epoch {epoch + 1}',bar_format='{desc:<25.25}{percentage:3.0f}%|{bar:20}{r_bar}'):
-        #print("data:",data)
-        inputs_total, labels_total, _ = data
-        if inputs_total is None:
-            break
-        if i < 2 and epoch==0:
-            print("")
-            print("max inputs:", torch.max(inputs_total).item())
-            print("min inputs:", torch.min(inputs_total).item())
-            print("std inputs:", torch.std(inputs_total).item())
+    with tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Train Epoch {epoch + 1}:',bar_format='{desc:<18.23}{percentage:3.0f}%|{bar:20}{r_bar}') as tepoch:
+        for i, data in tepoch:
+            #print("data:",data)
+            inputs_total, labels_total, _ = data
+            if inputs_total is None:
+                break
+            if i < 2 and epoch==0:
+                print("")
+                print("max inputs:", torch.max(inputs_total).item())
+                print("min inputs:", torch.min(inputs_total).item())
+                print("std inputs:", torch.std(inputs_total).item())
 
 
-        for j, (inputs, labels) in enumerate(zip(inputs_total,labels_total)):
-            labels = labels.unsqueeze(0)
-            outputs = model(inputs).expand(1, -1, -1)
-            loss = criterion(outputs[0], labels[0])
-            running_loss += loss
+            for j, (inputs, labels) in enumerate(zip(inputs_total,labels_total)):
+                labels = labels.unsqueeze(0)
+                outputs = model(inputs).expand(1, -1, -1)
+                loss = criterion(outputs[0], labels[0])
+                if torch.isnan(loss):
+                    #print(f"NaN loss detected at iteration {i+1}, {j+1}. Skipping this iteration.")
+                    tepoch.set_postfix(id_aug=j+1,m_loss=None)
+                    continue  # Otra opción podría ser detener el bucle o el entrenamiento aquí
 
-            if flag_mean:
-                # Acumular la pérdida
-                accumulated_loss += loss
-                counter += 1
+                running_loss += loss.item()
 
-                # Realizar el paso de retropropagación y actualización de parámetros cada batch_size iteraciones
-                if counter == batch_size:
-                    averaged_loss = accumulated_loss / batch_size
-                    averaged_loss.backward()
+                if flag_mean:
+                    # Acumular la pérdida
+                    accumulated_loss += loss
+                    counter += 1
+
+                    # Realizar el paso de retropropagación y actualización de parámetros cada batch_size iteraciones
+                    if counter == batch_size:
+                        averaged_loss = accumulated_loss / batch_size
+                        averaged_loss.backward()
+                        nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
+                        optimizer.step()
+
+                        # Reiniciar contadores y acumulador de pérdida
+                        accumulated_loss = 0
+                        counter = 0
+                        optimizer.zero_grad()
+                else:
+                    loss.backward()
                     nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
                     optimizer.step()
-
-                    # Reiniciar contadores y acumulador de pérdida
-                    accumulated_loss = 0
-                    counter = 0
                     optimizer.zero_grad()
-            else:
-                loss.backward()
-                nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
-                optimizer.step()
-                optimizer.zero_grad()
-            
-            label_original = int(labels[0][0])
-            label_predicted = int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2)))
+                
+                label_original = int(labels[0][0])
+                label_predicted = int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2)))
 
-            labels_predicted.append(label_predicted)
-            labels_original.append(label_original)
-            # Statistics
-            if label_predicted == label_original:
-                stats[label_original][0] += 1
-                pred_correct += 1
-            
-            if label_original in torch.topk(torch.reshape(outputs, (-1,)), k).indices.tolist():
-                pred_top_5 += 1
+                labels_predicted.append(label_predicted)
+                labels_original.append(label_original)
+                # Statistics
+                if label_predicted == label_original:
+                    stats[label_original][0] += 1
+                    pred_correct += 1
+                
+                if label_original in torch.topk(torch.reshape(outputs, (-1,)), k).indices.tolist():
+                    pred_top_5 += 1
 
-            stats[label_original][1] += 1
-            pred_all += 1
+                stats[label_original][1] += 1
+                pred_all += 1
+
+                #tqdm.tqdm.write(f"ID:{i+1} IDaug:{j+1} | Loss: {running_loss/pred_all} Acc: {pred_correct / pred_all}")
+                tepoch.set_postfix(id_aug=j+1,m_loss=running_loss/pred_all,m_acc=pred_correct / pred_all)
+
     # Asegurarse de realizar el último paso de retropropagación si es necesario
     if counter > 0:
         averaged_loss = accumulated_loss / counter
         averaged_loss.backward()
         nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
         optimizer.step()
+
+    pred_all= 1 if pred_all == 0 else pred_all
 
     return running_loss/pred_all, pred_correct, pred_all, (pred_correct / pred_all),stats,labels_original,labels_predicted
 
@@ -100,42 +112,50 @@ def evaluate(model, dataloader, criterion, device,epoch=0,args=None):
     k = 5 # top 5 (acc)
     labels_original = []
     labels_predicted = []
+    with tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Val   Epoch {epoch + 1}:',bar_format='{desc:<18.23}{percentage:3.0f}%|{bar:20}{r_bar}') as tepoch:
+        for i, data in tepoch:
 
-    for i, data in tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Evaludate Epoch {epoch + 1}:',bar_format='{desc:<25.20}{percentage:3.0f}%|{bar:20}{r_bar}'):
-
-        #print("data:",data)
-        inputs_total, labels_total, _ = data
-        if inputs_total is None:
-            break
-        if i < 2 and epoch==0:
-            print("")
-            print("max inputs:", torch.max(inputs_total).item())
-            print("min inputs:", torch.min(inputs_total).item())
-            print("std inputs:", torch.std(inputs_total).item())
-        
-        for j, (inputs, labels) in enumerate(zip(inputs_total,labels_total)):
-            labels = labels.unsqueeze(0)
-            outputs = model(inputs).expand(1, -1, -1)
-            loss = criterion(outputs[0], labels[0])
-            running_loss += loss
-
-            label_original = int(labels[0][0])
-            label_predicted = int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2)))
-
-            labels_predicted.append(label_predicted)
-            labels_original.append(label_original)
+            #print("data:",data)
+            inputs_total, labels_total, _ = data
+            if inputs_total is None:
+                break
+            if i < 2 and epoch==0:
+                print("")
+                print("max inputs:", torch.max(inputs_total).item())
+                print("min inputs:", torch.min(inputs_total).item())
+                print("std inputs:", torch.std(inputs_total).item())
             
-            # Statistics
-            if label_predicted == label_original:
-                stats[label_original][0] += 1
-                pred_correct += 1
-            
-            if label_original in torch.topk(torch.reshape(outputs, (-1,)), k).indices.tolist():
-                pred_top_5 += 1
+            for j, (inputs, labels) in enumerate(zip(inputs_total,labels_total)):
+                labels = labels.unsqueeze(0)
+                outputs = model(inputs).expand(1, -1, -1)
+                loss = criterion(outputs[0], labels[0])
+                if torch.isnan(loss):
+                    #print(f"NaN loss detected at iteration {i+1}, {j+1}. Skipping this iteration.")
+                    tepoch.set_postfix(id_aug=j+1,m_loss=None)
+                    continue  # Otra opción podría ser detener el bucle o el entrenamiento aquí
 
-            stats[label_original][1] += 1
-            pred_all += 1
+                running_loss += loss.item()
 
+                label_original = int(labels[0][0])
+                label_predicted = int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2)))
+
+                labels_predicted.append(label_predicted)
+                labels_original.append(label_original)
+                
+                # Statistics
+                if label_predicted == label_original:
+                    stats[label_original][0] += 1
+                    pred_correct += 1
+                
+                if label_original in torch.topk(torch.reshape(outputs, (-1,)), k).indices.tolist():
+                    pred_top_5 += 1
+
+                stats[label_original][1] += 1
+                pred_all += 1
+                #tqdm.tqdm.write(f"ID:{i+1} IDaug:{j+1} | Loss: {running_loss/pred_all} Acc: {pred_correct / pred_all}")
+                tepoch.set_postfix(id_aug=j+1,m_loss=running_loss/pred_all,m_acc=pred_correct / pred_all)
+
+    pred_all= 1 if pred_all == 0 else pred_all
     return running_loss/pred_all, pred_correct, pred_all, (pred_correct / pred_all), (pred_top_5 / pred_all), stats,labels_original,labels_predicted
 
 

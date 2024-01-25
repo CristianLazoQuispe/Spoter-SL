@@ -429,7 +429,7 @@ def train(args):
         current_lr = sgd_optimizer.param_groups[0]["lr"]
 
         train_loss, _, _, train_acc,train_stats,train_labels_original,train_labels_predicted = train_epoch(slrt_model, train_loader, cel_criterion, sgd_optimizer,device,epoch=epoch,args=args)
-        losses.append(train_loss.item())
+        losses.append(train_loss)
         train_accs.append(train_acc)
         # Obtener la tasa de aprendizaje actual
 
@@ -472,11 +472,11 @@ def train(args):
         df_merged.rename(columns={'train_gloss': 'gloss'}, inplace=True)
 
         
-        train_f1_micro = f1_score(train_labels_original, train_labels_predicted, average='micro')
-        val_f1_micro   = f1_score(val_labels_original, val_labels_predicted, average='micro')
+        train_f1_micro = f1_score(train_labels_original, train_labels_predicted, average='micro',zero_division=0)
+        val_f1_micro   = f1_score(val_labels_original, val_labels_predicted, average='micro',zero_division=0)
 
-        train_f1_weighted = f1_score(train_labels_original, train_labels_predicted, average='weighted')
-        val_f1_weighted   = f1_score(val_labels_original, val_labels_predicted, average='weighted')
+        train_f1_weighted = f1_score(train_labels_original, train_labels_predicted, average='weighted',zero_division=0)
+        val_f1_weighted   = f1_score(val_labels_original, val_labels_predicted, average='weighted',zero_division=0)
 
         total_time = time.time()-start_time
 
@@ -503,6 +503,7 @@ def train(args):
                 'total_time':total_time
             }
 
+        """
         if val_loader:
             for _, row in df_train_stats.iterrows():
                 gloss_name = row['train_gloss']
@@ -512,7 +513,7 @@ def train(args):
                 gloss_name = row['val_gloss']
                 accuracy_metric_name = f'val_acc_{gloss_name}'
                 log_values[accuracy_metric_name] = row['val_gloss_acc']
-
+        """
 
 
             
@@ -522,7 +523,7 @@ def train(args):
 
                 if val_loader:
 
-                    log_values['Train_table_stats']   = wandb.Table(dataframe=df_train_stats)
+                    log_values['Train_table_stats']   =  wandb.Table(dataframe=df_train_stats)
                     log_values['Val_table_stats']     =  wandb.Table(dataframe=df_val_stats)
                     log_values['Compare_table_stats'] =  wandb.Table(dataframe=df_merged)
 
@@ -544,24 +545,25 @@ def train(args):
                 artifact = wandb.Artifact(f'best-model_{run.id}.pth', type='model')
                 artifact.add_file(model_save_folder_path + "/checkpoint_best_model.pth")
                 run.log_artifact(artifact)
-                wandb.save(model_save_folder_path + "/checkpoint_best_model.pth")
+                #wandb.save(model_save_folder_path + "/checkpoint_best_model.pth")
 
                 checkpoint_index += 1
 
         if val_loader:
             wandb.log(log_values)
 
+        """
         if epoch % args.log_freq == 0:
-            print("[" + str(epoch + 1) + "] TRAIN  loss: " + str(train_loss.item()) + " acc: " + str(train_acc))
-            logging.info("[" + str(epoch + 1) + "] TRAIN  loss: " + str(train_loss.item()) + " acc: " + str(train_acc))
+            print("[" + str(epoch + 1) + "] TRAIN  loss: " + str(train_loss) + " acc: " + str(train_acc))
+            logging.info("[" + str(epoch + 1) + "] TRAIN  loss: " + str(train_loss) + " acc: " + str(train_acc))
 
             if val_loader:
-                print("[" + str(epoch + 1) + "] VALIDATION  loss: " + str(val_loss.item()) + "acc: " + str(val_acc) + " top-5(acc): " + str(val_acc_top5))
-                logging.info("[" + str(epoch + 1) + "] VALIDATION  loss: " + str(val_loss.item()) + "acc: " + str(val_acc) + " top-5(acc): " + str(val_acc_top5))
+                print("[" + str(epoch + 1) + "] VALIDATION  loss: " + str(val_loss) + "acc: " + str(val_acc) + " top-5(acc): " + str(val_acc_top5))
+                logging.info("[" + str(epoch + 1) + "] VALIDATION  loss: " + str(val_loss) + "acc: " + str(val_acc) + " top-5(acc): " + str(val_acc_top5))
 
             print("")
             logging.info("")
-
+        """
         # Reset the top accuracies on static subsets
         #if epoch % 10 == 0:
         #    top_train_acc, top_val_acc, val_acc_top5 = 0, 0, 0
