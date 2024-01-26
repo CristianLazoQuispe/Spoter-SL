@@ -2,11 +2,11 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [Aug:No_Loss:w.00001_mean:16_pow1_Lr:plateu_Op:adam_Dout:0.3_Dim8-d4]
+    values: [Aug:No_Loss:w.0001_mean:4_pow1_Lr:plateu_Op:adam_Dout:0.3_Dim8_Gaus:.01-d4]
   sweep:
     values: [1]
   lr:
-    values: [0.00001] #0.001, 0.00001,
+    values: [0.0001] #0.001, 0.00001,
   num_heads:
     values: [2,3,27] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
   num_layers_1:
@@ -24,7 +24,7 @@ parameters:
   batch_mean:
     values: [1]
   batch_size:
-    values: [16]
+    values: [4]
   loss_weighted_factor:
     values: [1]
   label_smoothing:
@@ -41,4 +41,7 @@ parameters:
     values: [0.0001]
   dropout:
     values: [0.3]
+  gaussian_std:
+    values: [0.01]
+
 #python train.py --device=0 --dim_feedforward=128 --lr=0.0001 --num_heads=54 --num_layers_1=32 --num_layers_2=256 --sweep=1 --augmentation=1

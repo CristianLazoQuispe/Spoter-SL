@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [Aug:Si_Loss:w.0001_mean:16_pow1_Lr:plateu_Op:adam_Dout:0.3_Dim8-d7]
+    values: [Aug:Si_Loss:w.0001_mean:16_pow1_Lr:plateu_Op:adam_Dout:0.3_Dim8_Gaus:.01-d4]
   sweep:
     values: [1]
   lr:
@@ -41,5 +41,7 @@ parameters:
     values: [0.0001]
   dropout:
     values: [0.3]
+  gaussian_std:
+    values: [0.01]
 
 #python train.py --device=0 --dim_feedforward=128 --lr=0.0001 --num_heads=54 --num_layers_1=32 --num_layers_2=256 --sweep=1 --augmentation=1
