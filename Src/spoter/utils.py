@@ -42,6 +42,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                 labels = labels.unsqueeze(0)
                 outputs = model(inputs).expand(1, -1, -1)
                 loss = criterion(outputs[0], labels[0])
+                label_original  = int(labels[0][0])
                 if torch.isnan(loss):
                     #print(f"NaN loss detected at iteration {i+1}, {j+1}. Skipping this iteration.")
                     tepoch.set_postfix(id_aug=j+1,m_loss=None)
@@ -73,7 +74,6 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                     optimizer.step()
                     optimizer.zero_grad()
                 
-                label_original  = int(labels[0][0])
                 label_predicted = int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2)))
 
                 labels_predicted.append(label_predicted)
@@ -131,6 +131,7 @@ def evaluate(model, dataloader, criterion, device,epoch=0,args=None):
                 labels = labels.unsqueeze(0)
                 outputs = model(inputs).expand(1, -1, -1)
                 loss = criterion(outputs[0], labels[0])
+                label_original = int(labels[0][0])
                 if torch.isnan(loss):
                     #print(f"NaN loss detected at iteration {i+1}, {j+1}. Skipping this iteration.")
                     tepoch.set_postfix(id_aug=j+1,m_loss=None)
@@ -140,7 +141,6 @@ def evaluate(model, dataloader, criterion, device,epoch=0,args=None):
 
                 running_loss += loss.item()
 
-                label_original = int(labels[0][0])
                 label_predicted = int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2)))
 
                 labels_predicted.append(label_predicted)

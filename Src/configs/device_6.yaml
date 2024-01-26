@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [Aug:No_Loss:w.001_mean:16_pow1_Lr:plateu_Op:adam_Dout:0.3_Dim8-16]
+    values: [Aug:No_Loss:w.0001_mean:16_pow1_Lr:plateu_Op:adam_Dout:0.3_Dim8-d6]
   sweep:
     values: [1]
   lr:
@@ -14,7 +14,7 @@ parameters:
   num_layers_2:
     values: [2,3,27] # [128,64,32,16,4,,64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
   dim_feedforward:
-    values: [8,16] #
+    values: [8,16,32] #
   device:
     values: [0]
   augmentation:
