@@ -1,5 +1,6 @@
 
 import os
+import json
 import argparse
 import random
 import logging
@@ -401,6 +402,10 @@ def train(args):
         factors = [train_set.factors[i]**args.loss_weighted_factor for i in range(args.num_classes)]
         min_factor = min(factors)
         factors = [value/min_factor for value in factors]
+
+        name_factors = {train_set.inv_dict_labels_dataset[i]:value for i, value in enumerate(factors)}
+        print("name_factors:")
+        print(json.dumps(name_factors, indent=4))
         class_weight = torch.FloatTensor(factors).to(device)
         print("\\\\\\"*20)
         print("class_weight:",class_weight)
@@ -454,6 +459,7 @@ def train(args):
             
         df_train_stats = get_df_stats(train_set,train_stats,args.num_classes).add_prefix('train_')
         df_val_stats   = get_df_stats(val_set,val_stats,args.num_classes).add_prefix('val_')
+
         df_merged = pd.merge(df_train_stats, df_val_stats, how='inner', left_on='train_gloss', right_on='val_gloss')
         # Puedes eliminar la columna redundante después de la fusión
         df_merged.drop('val_gloss', axis=1, inplace=True)
