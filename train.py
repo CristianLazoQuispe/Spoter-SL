@@ -432,6 +432,10 @@ def train(args):
             slrt_model.train(False)
             val_loss, _, _, val_acc, val_acc_top5, val_stats,val_labels_original,val_labels_predicted = evaluate(slrt_model, val_loader, cel_criterion, device,epoch=epoch,args=args)
             slrt_model.train(True)
+            if len(set(val_labels_predicted))<(args.num_classes/2):
+                val_acc = 0
+                val_acc_top5 = 0
+
             val_accs.append(val_acc)
             val_accs_top5.append(val_acc_top5)
 
