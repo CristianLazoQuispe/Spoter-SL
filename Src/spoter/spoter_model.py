@@ -96,6 +96,7 @@ class SPOTER(nn.Module):
 
         h = self.dropout1(h) 
         res = self.linear_class(h)
+        res = nn.functional.relu(res)
         print(f"res    shape: {res.shape}") if show else None
         return res
 

@@ -11,7 +11,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
     k = 5
     
     pred_correct, pred_top_5,  pred_all = 0, 0, 0
-    running_loss = 0.0
+    running_loss = 0
     
     stats = {i: [0, 0] for i in range(302)}
 
@@ -60,11 +60,11 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                         averaged_loss.backward()
                         nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
                         optimizer.step()
+                        optimizer.zero_grad()
 
                         # Reiniciar contadores y acumulador de pérdida
                         accumulated_loss = 0
                         counter = 0
-                        optimizer.zero_grad()
                 else:
                     loss.backward()
                     nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
@@ -91,7 +91,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                 tepoch.set_postfix(id_aug=j+1,m_loss=running_loss/pred_all,m_acc=pred_correct / pred_all)
 
     # Asegurarse de realizar el último paso de retropropagación si es necesario
-    if counter > 0:
+    if counter > 0 and accumulated_loss.item()>0:
         averaged_loss = accumulated_loss / counter
         averaged_loss.backward()
         nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
