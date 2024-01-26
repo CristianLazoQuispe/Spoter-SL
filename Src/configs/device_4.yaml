@@ -21,8 +21,8 @@ parameters:
     values: [0]
   factor_aug:
     values: [1]
-  batch_mean:
-    values: [1]
+  batch_name:
+    values: [mean_2]
   batch_size:
     values: [4]
   loss_weighted_factor:

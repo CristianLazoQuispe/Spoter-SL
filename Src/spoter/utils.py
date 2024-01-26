@@ -16,7 +16,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
     stats = {i: [0, 0] for i in range(302)}
 
     batch_size = args.batch_size
-    flag_mean = args.batch_mean
+    batch_name = args.batch_name
     accumulated_loss = 0
     counter = 0
 
@@ -50,17 +50,20 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                     labels_original.append(label_original)
                     continue  # Otra opción podría ser detener el bucle o el entrenamiento aquí
 
-                running_loss += loss.item()
+                if batch_name =='mean_2':
+                    loss.backward()
 
-                if flag_mean:
+                running_loss += loss.item()
+                if batch_name!='':
                     # Acumular la pérdida
                     accumulated_loss += loss
                     counter += 1
 
                     # Realizar el paso de retropropagación y actualización de parámetros cada batch_size iteraciones
                     if counter == batch_size:
-                        averaged_loss = accumulated_loss / batch_size
-                        averaged_loss.backward()
+                        if batch_name =='mean_1':
+                            averaged_loss = accumulated_loss / batch_size
+                            averaged_loss.backward()
                         nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
                         optimizer.step()
                         optimizer.zero_grad()
@@ -93,9 +96,13 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                 tepoch.set_postfix(id_aug=j+1,m_loss=running_loss/pred_all,m_acc=pred_correct / pred_all)
 
     # Asegurarse de realizar el último paso de retropropagación si es necesario
-    if counter > 0 and accumulated_loss.item()>0:
-        averaged_loss = accumulated_loss / counter
-        averaged_loss.backward()
+    if batch_name =='mean_1':
+        if counter > 0 and accumulated_loss.item()>0:
+            averaged_loss = accumulated_loss / counter
+            averaged_loss.backward()
+            nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
+            optimizer.step()
+    if batch_name =='mean_2':
         nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
         optimizer.step()
 
@@ -114,6 +121,8 @@ def evaluate(model, dataloader, criterion, device,epoch=0,args=None):
     k = 5 # top 5 (acc)
     labels_original = []
     labels_predicted = []
+
+
     with tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Val   Epoch {epoch + 1}:',bar_format='{desc:<18.23}{percentage:3.0f}%|{bar:20}{r_bar}') as tepoch:
         for i, data in tepoch:
 
@@ -129,7 +138,8 @@ def evaluate(model, dataloader, criterion, device,epoch=0,args=None):
             
             for j, (inputs, labels) in enumerate(zip(inputs_total,labels_total)):
                 labels = labels.unsqueeze(0)
-                outputs = model(inputs).expand(1, -1, -1)
+                with torch.no_grad():
+                    outputs = model(inputs).expand(1, -1, -1)
                 loss = criterion(outputs[0], labels[0])
                 label_original = int(labels[0][0])
                 if torch.isnan(loss):

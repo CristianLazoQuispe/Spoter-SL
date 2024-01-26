@@ -121,8 +121,8 @@ def get_default_args():
                         help="Augmentations")
     parser.add_argument("--factor_aug", type=int, default=2,
                         help="factor para multiplicar los datos de augmentation")
-    parser.add_argument("--batch_mean", type=int, default=0,
-                        help="batch_mean flag")    
+    parser.add_argument("--batch_name", type=str, default="",
+                        help=" | mean_1:calcula backward en cada batch | mean_2: calcula backward en cada instancia")    
     parser.add_argument("--batch_size", type=int, default=0,
                         help="batch_size ")
     parser.add_argument("--loss_weighted_factor", type=int, default=1,
@@ -473,8 +473,8 @@ def train(args):
         df_merged.rename(columns={'train_gloss': 'gloss'}, inplace=True)
 
         
-        train_f1_micro = f1_score(train_labels_original, train_labels_predicted, average='micro',zero_division=0)
-        val_f1_micro   = f1_score(val_labels_original, val_labels_predicted, average='micro',zero_division=0)
+        #train_f1_micro = f1_score(train_labels_original, train_labels_predicted, average='micro',zero_division=0)
+        #val_f1_micro   = f1_score(val_labels_original, val_labels_predicted, average='micro',zero_division=0)
 
         train_f1_weighted = f1_score(train_labels_original, train_labels_predicted, average='weighted',zero_division=0)
         val_f1_weighted   = f1_score(val_labels_original, val_labels_predicted, average='weighted',zero_division=0)
@@ -501,8 +501,6 @@ def train(args):
                 'val_best_acc': top_val_acc,
                 'val_top5_acc': val_acc_top5,
                 'epoch': epoch,
-                'train_f1_micro':train_f1_micro,
-                'val_f1_micro':val_f1_micro,
                 'train_f1_weighted':train_f1_weighted,
                 'val_f1_weighted':val_f1_weighted,
                 'total_time':total_time
