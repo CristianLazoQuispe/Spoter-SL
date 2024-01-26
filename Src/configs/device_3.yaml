@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [Aug:No_Loss:w.001_mean:16_pow2_Lr:plateu_Op:adam_Dout:0.3_Dim8-16]
+    values: [Aug:No_Loss:w.0001_mean:16_pow2_Lr:plateu_Op:adam_Dout:0.3_Dim8-d3]
   sweep:
     values: [1]
   lr:
