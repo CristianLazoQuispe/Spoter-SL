@@ -524,12 +524,17 @@ def train(args):
             
         # Save checkpoints if they are best in the current subset
         if args.save_checkpoints:
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': slrt_model.state_dict(),
+                'optimizer_state_dict': sgd_optimizer.state_dict(),
+                'loss': train_loss
+            }, model_save_folder_path + "/checkpoint_model.pth")
+            
             if val_acc > top_val_acc:
-
                 if val_loader:
-
-                    log_values['Train_table_stats']   =  wandb.Table(dataframe=df_train_stats)
-                    log_values['Val_table_stats']     =  wandb.Table(dataframe=df_val_stats)
+                    #log_values['Train_table_stats']   =  wandb.Table(dataframe=df_train_stats)
+                    #log_values['Val_table_stats']     =  wandb.Table(dataframe=df_val_stats)
                     log_values['Compare_table_stats'] =  wandb.Table(dataframe=df_merged)
 
 
