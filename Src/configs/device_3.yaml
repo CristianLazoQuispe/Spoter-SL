@@ -2,11 +2,11 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [Aug:No_Loss:w.01_pow3_Lr:pl_Op:adam_Dout:0.3]
+    values: [Aug:No_Loss:w.001_pow3_Lr:plateu_Op:adam_Dout:0.3]
   sweep:
     values: [1]
   lr:
-    values: [0.01] #0.001, 0.00001,
+    values: [0.001] #0.001, 0.00001,
   num_heads:
     values: [3,27] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
   num_layers_1:
