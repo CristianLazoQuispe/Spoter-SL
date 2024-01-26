@@ -97,7 +97,7 @@ def get_default_args():
 
     # Scheduler
     parser.add_argument("--scheduler", type=str, default="", help="Factor for the steplr plateu scheduler")
-    parser.add_argument("--scheduler_factor", type=int, default=0.95, help="Factor for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--scheduler_factor", type=int, default=0.9, help="Factor for the ReduceLROnPlateau scheduler")
     parser.add_argument("--scheduler_patience", type=int, default=5,
                         help="Patience for the ReduceLROnPlateau scheduler")
 
@@ -478,8 +478,11 @@ def train(args):
 
         if args.scheduler == 'steplr':
             lr_scheduler.step()
-        if args.scheduler == 'plateu':
+        if args.scheduler == 'plateu' and val_loss>0:
             lr_scheduler.step(val_loss)
+        
+        if val_loss== 0:
+            val_loss = 10
             
         if val_loader:
             log_values = {
