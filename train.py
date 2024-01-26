@@ -321,7 +321,7 @@ def train(args):
     lr_scheduler = None
 
     if args.scheduler == 'steplr':
-        lr_scheduler = optim.lr_scheduler.StepLR(sgd_optimizer, step_size=5, gamma=0.9995)
+        lr_scheduler = optim.lr_scheduler.StepLR(sgd_optimizer, step_size=1, gamma=0.9995)
     if args.scheduler == 'plateu':
         lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='min', factor=args.scheduler_factor, patience=args.scheduler_patience, verbose=True)
 

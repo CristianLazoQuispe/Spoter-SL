@@ -2,17 +2,17 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [original_true_aug_lossw_squared2]
+    values: [Aug:Si_Loss:w.001_mean:No_pow3_Lr:plateu_Op:adam_Dout:0.3]
   sweep:
     values: [1]
   lr:
     values: [0.001] #0.001, 0.00001,
   num_heads:
-    values: [3,27] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim
+    values: [3,27] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
   num_layers_1:
     values: [9,27] # [64,12,8,6,4,2,1]
   num_layers_2:
-    values: [3,27] # [128,64,32,16,4,,64,12,8,6,4,2,1] # self.transformer.decoder.num_layers
+    values: [3,27] # [128,64,32,16,4,,64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
   dim_feedforward:
     values: [64,128] #
   device:
@@ -24,20 +24,21 @@ parameters:
   batch_mean:
     values: [0]
   batch_size:
-    values: [4]
+    values: [16]
+  loss_weighted_factor:
+    values: [3]
   label_smoothing:
-    values: [0]
+    values: [0.1]
   early_stopping_patience:
     values: [500]
   epochs:
     values: [50000]
-  is_weighted:
-    values: [1]
-  is_weighted_squared:
-    values: [1]
-  weighted_squared:
-    values: [2]
   scheduler:
-    values: [""]
-
+    values: ["plateu"]
+  optimizer:
+    values: ['adam']
+  weight_decay:
+    values: [0.001]
+  dropout:
+    values: [0.3]
 #python train.py --device=0 --dim_feedforward=128 --lr=0.0001 --num_heads=54 --num_layers_1=32 --num_layers_2=256 --sweep=1 --augmentation=1
