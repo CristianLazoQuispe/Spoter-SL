@@ -414,6 +414,8 @@ def train(args):
         cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)#, weight=class_weight)
     #cel_criterion = nn.CrossEntropyLoss()
     
+    previous_val_loss = 0
+    previous_val_acc  = 0 
 
     for epoch in range(epoch_start, args.epochs):
 
@@ -485,16 +487,17 @@ def train(args):
         if args.scheduler == 'plateu' and val_loss>0:
             lr_scheduler.step(val_loss)
         
-        if val_loss== 0:
-            val_loss = 10
-            
+        if val_loss> 0:
+            previous_val_loss = val_loss
+        if val_acc>0:
+            previous_val_acc = val_acc
         if val_loader:
             log_values = {
                 'current_lr':current_lr,
                 'train_acc': train_acc,
                 'train_loss': train_loss,
-                'val_acc': val_acc,
-                'val_loss':val_loss,
+                'val_acc': previous_val_acc,
+                'val_loss':previous_val_loss,
                 'val_best_acc': top_val_acc,
                 'val_top5_acc': val_acc_top5,
                 'epoch': epoch,
