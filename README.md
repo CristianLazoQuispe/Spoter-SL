@@ -44,6 +44,9 @@ You can also kill a particular session using the following command:
 
     watch -n 1 nvidia-smi
 
+    sudo pip install gpustat
+    watch -n 0.5 -c gpustat -cp --color
+
 
 Entrenamiento sin augmentation
 
