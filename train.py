@@ -102,8 +102,8 @@ def get_default_args():
                         help="Patience for the ReduceLROnPlateau scheduler")
 
     # Gaussian noise normalization
-    parser.add_argument("--gaussian_mean", type=int, default=0, help="Mean parameter for Gaussian noise layer")
-    parser.add_argument("--gaussian_std", type=int, default=0.001,
+    parser.add_argument("--gaussian_mean", type=float, default=0.0, help="Mean parameter for Gaussian noise layer")
+    parser.add_argument("--gaussian_std", type=float, default=0.001,
                         help="Standard deviation parameter for Gaussian noise layer")
 
     # Visualization
