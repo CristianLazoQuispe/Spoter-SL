@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [Aug:Si_Loss:w.0001_mean:4_pow1_Lr:plateu_Op:adam_Dout:0.3_Dim8_Gaus:.01-d5]
+    values: [Aug:Si_Loss:w.0001_mean:64_pow2_Lr:plateu_Op:adam_Dout:0.3_Dim8_Gaus:.01-d5]
   sweep:
     values: [1]
   lr:
@@ -16,7 +16,7 @@ parameters:
   dim_feedforward:
     values: [8,16,32] #
   device:
-    values: [0]
+    values: [1]
   augmentation:
     values: [1]
   factor_aug:
@@ -24,9 +24,9 @@ parameters:
   batch_name:
     values: [mean_2]
   batch_size:
-    values: [4]
+    values: [64]
   loss_weighted_factor:
-    values: [1]
+    values: [2]
   label_smoothing:
     values: [0.1]
   early_stopping_patience:
