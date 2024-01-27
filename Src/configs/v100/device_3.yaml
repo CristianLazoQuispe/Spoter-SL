@@ -8,7 +8,7 @@ parameters:
   lr:
     values: [0.0001] #0.001, 0.00001,
   num_heads:
-    values: [2,18,64,128] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
+    values: [108,54,27,9] # [108,54,27,9,3,1] este debe ser un divisor de hidden_dim 108 : nhead
   num_layers_1:
     values: [3] # [64,12,8,6,4,2,1]
   num_layers_2:
