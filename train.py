@@ -424,7 +424,11 @@ def train(args):
 
         current_lr = sgd_optimizer.param_groups[0]["lr"]
 
-        train_loss, _, _, train_acc,train_stats,train_labels_original,train_labels_predicted = train_epoch(slrt_model, train_loader, cel_criterion, sgd_optimizer,device,epoch=epoch,args=args)
+        train_loss,train_stats,train_labels_original,train_labels_predicted = train_epoch(slrt_model, train_loader, 
+        cel_criterion, sgd_optimizer,device,epoch=epoch,args=args)
+        
+        train_acc   = f1_score(train_labels_original, train_labels_predicted, average='micro',zero_division=0)
+
         losses.append(train_loss)
         train_accs.append(train_acc)
         # Obtener la tasa de aprendizaje actual
@@ -432,22 +436,29 @@ def train(args):
 
         if val_loader:
             slrt_model.train(False)
-            val_loss, _, _, val_acc, val_acc_top5, val_stats,val_labels_original,val_labels_predicted = evaluate(slrt_model, val_loader, cel_criterion, device,epoch=epoch,args=args)
+            val_loss, val_acc_top5, val_stats,val_labels_original,val_labels_predicted = evaluate(slrt_model, val_loader, cel_criterion, device,epoch=epoch,args=args)
             slrt_model.train(True)
-            if len(set(val_labels_predicted))<(args.num_classes/2):
-                val_acc = 0
-                val_acc_top5 = 0
+
+            val_acc   = f1_score(val_labels_original, val_labels_predicted, average='micro',zero_division=0)
+
+            #train_f1_micro = f1_score(train_labels_original, train_labels_predicted, average='micro',zero_division=0)
+            #val_f1_micro   = f1_score(val_labels_original, val_labels_predicted, average='micro',zero_division=0)
+
+            train_f1_weighted = f1_score(train_labels_original, train_labels_predicted, average='weighted',zero_division=0)
+            val_f1_weighted   = f1_score(val_labels_original, val_labels_predicted, average='weighted',zero_division=0)
+
 
             val_accs.append(val_acc)
             val_accs_top5.append(val_acc_top5)
 
-            if val_acc > best_val_max_acc:
-                best_val_max_acc = val_acc
+            # GUARDANDO EL MEJOR MODELO
+            if val_f1_weighted > best_val_max_acc:
+                best_val_max_acc = val_f1_weighted
                 epochs_without_improvement = 0
             else:
                 epochs_without_improvement += 1
             # Check for early stopping based on the difference between training and validation loss
-            acc_difference = np.abs(train_acc - best_val_max_acc)
+            acc_difference = np.abs(train_f1_weighted - val_f1_weighted)
 
             if acc_difference > args.max_acc_difference:
                 epochs_distance_without_improvement+=1
@@ -473,20 +484,16 @@ def train(args):
         df_merged.rename(columns={'train_gloss': 'gloss'}, inplace=True)
 
         
-        #train_f1_micro = f1_score(train_labels_original, train_labels_predicted, average='micro',zero_division=0)
-        #val_f1_micro   = f1_score(val_labels_original, val_labels_predicted, average='micro',zero_division=0)
-
-        train_f1_weighted = f1_score(train_labels_original, train_labels_predicted, average='weighted',zero_division=0)
-        val_f1_weighted   = f1_score(val_labels_original, val_labels_predicted, average='weighted',zero_division=0)
 
         total_time = time.time()-start_time
 
 
         if args.scheduler == 'steplr':
             lr_scheduler.step()
-        if args.scheduler == 'plateu' and val_loss>0:
-            lr_scheduler.step(val_loss)
-        
+        if args.scheduler == 'plateu' and val_acc>0:
+            if val_loss is not None:
+                lr_scheduler.step(val_loss)
+
         if val_loss> 0:
             previous_val_loss = val_loss
         if val_acc>0:
@@ -530,14 +537,13 @@ def train(args):
                 'loss': train_loss
             }, model_save_folder_path + "/checkpoint_model.pth")
 
-            if val_acc > top_val_acc:
+            if val_f1_weighted > top_val_acc:
                 if val_loader:
                     #log_values['Train_table_stats']   =  wandb.Table(dataframe=df_train_stats)
                     #log_values['Val_table_stats']     =  wandb.Table(dataframe=df_val_stats)
                     log_values['Compare_table_stats'] =  wandb.Table(dataframe=df_merged)
 
-
-                top_val_acc = val_acc
+                top_val_acc = val_f1_weighted
 
                 torch.save({
                     'epoch': epoch,

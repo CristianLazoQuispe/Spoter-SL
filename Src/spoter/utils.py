@@ -103,12 +103,14 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
             nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
             optimizer.step()
     if batch_name =='mean_2':
-        nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
-        optimizer.step()
+        if running_loss>0:
+            nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
+            optimizer.step()
 
     pred_all= 1 if pred_all == 0 else pred_all
+    train_loss = None if running_loss == 0 else running_loss/pred_all
 
-    return running_loss/pred_all, pred_correct, pred_all, (pred_correct / pred_all),stats,labels_original,labels_predicted
+    return train_loss,stats,labels_original,labels_predicted
 
 
 def evaluate(model, dataloader, criterion, device,epoch=0,args=None):
@@ -170,7 +172,8 @@ def evaluate(model, dataloader, criterion, device,epoch=0,args=None):
                 tepoch.set_postfix(id_aug=j+1,m_loss=running_loss/pred_all,m_acc=pred_correct / pred_all)
 
     pred_all= 1 if pred_all == 0 else pred_all
-    return running_loss/pred_all, pred_correct, pred_all, (pred_correct / pred_all), (pred_top_5 / pred_all), stats,labels_original,labels_predicted
+    val_loss = None if running_loss == 0 else running_loss/pred_all
+    return val_loss, (pred_top_5 / pred_all), stats,labels_original,labels_predicted
 
 
 def evaluate_top_k(model, dataloader, device, k=5):
