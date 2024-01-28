@@ -2,21 +2,21 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [Aug:Si_Loss:w.0001_mean:64_pow2_Lr:plateu_Op:adam_Dout:0.3_Dim8_Gaus:.01-d5]
+    values: [Testing dim_feedforward -c3nvlink]
   sweep:
     values: [1]
   lr:
     values: [0.0001] #0.001, 0.00001,
   num_heads:
-    values: [2,3,27] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
+    values: [2] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
   num_layers_1:
-    values: [3,6,9,27] # [64,12,8,6,4,2,1]
+    values: [3] # [64,12,8,6,4,2,1]
   num_layers_2:
-    values: [2,3,27] # [128,64,32,16,4,,64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
+    values: [2] # [64,12,8,6,4,2,1]
   dim_feedforward:
-    values: [8,16,32] #
+    values: [128,64,32,16] #
   device:
-    values: [1]
+    values: [0]
   augmentation:
     values: [1]
   factor_aug:
@@ -24,15 +24,15 @@ parameters:
   batch_name:
     values: [mean_2]
   batch_size:
-    values: [64]
+    values: [32]
   loss_weighted_factor:
     values: [2]
   label_smoothing:
     values: [0.1]
   early_stopping_patience:
-    values: [500]
+    values: [10]
   epochs:
-    values: [50000]
+    values: [500]
   scheduler:
     values: ["plateu"]
   optimizer:
@@ -42,6 +42,6 @@ parameters:
   dropout:
     values: [0.3]
   gaussian_std:
-    values: [0.01]
+    values: [0.1]
 
 #python train.py --device=0 --dim_feedforward=128 --lr=0.0001 --num_heads=54 --num_layers_1=32 --num_layers_2=256 --sweep=1 --augmentation=1
