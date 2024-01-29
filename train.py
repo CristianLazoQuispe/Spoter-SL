@@ -528,9 +528,9 @@ def train(args):
             if val_loss is not None:
                 lr_scheduler.step(val_loss)
 
-        if val_loss> 0:
+        if val_loss is not None:
             previous_val_loss = val_loss
-        if val_acc>0:
+        if val_acc is not None:
             previous_val_acc = val_acc
         if val_loader:
             log_values = {
