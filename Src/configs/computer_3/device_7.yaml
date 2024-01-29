@@ -30,9 +30,9 @@ parameters:
   label_smoothing:
     values: [0.1]
   early_stopping_patience:
-    values: [10]
+    values: [50]
   epochs:
-    values: [500]
+    values: [800]
   scheduler:
     values: ["plateu"]
   optimizer:

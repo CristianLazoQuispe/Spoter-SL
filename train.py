@@ -30,6 +30,36 @@ from torch.nn.utils.rnn import pad_sequence
 from sklearn.metrics import f1_score
 import time
 
+
+import atexit
+
+import gc
+
+run = None
+model_save_folder_path = None
+top_val_f1_weighted = 0
+top_val_f1_weighted_before = 0
+
+def finish_process():
+    global run,model_save_folder_path
+    global top_val_f1_weighted,top_val_f1_weighted_before
+    """
+    function to finish wandb if there is an error in the code or force stop
+    """
+    print("Finishing process")
+    if top_val_f1_weighted!= top_val_f1_weighted_before:
+        print("Sending artifact to wandb!")
+        artifact = wandb.Artifact(f'best-model_{run.id}.pth', type='model')
+        artifact.add_file(model_save_folder_path + "/checkpoint_best_model.pth")
+        run.log_artifact(artifact)
+    print("Closing wandb.. ")
+    wandb.finish()
+    print("Wandb closed")
+    print("Cleaning memory.. ")
+    gc.collect()
+    torch.cuda.empty_cache()
+    print("Memory cleaned")
+
 # Modifica el collate_fn para rellenar secuencias
 def custom_collate_fn(batch):
     data, labels, video_names = zip(*batch)
@@ -168,6 +198,8 @@ def get_df_stats(data_set,stats,num_classes):
     return df_stats
 
 def train(args):
+    global run,model_save_folder_path
+    global top_val_f1_weighted,top_val_f1_weighted_before
 
     # MARK: TRAINING PREPARATION AND MODULES
     run = wandb.init(project=PROJECT_WANDB, 
@@ -370,6 +402,8 @@ def train(args):
     losses, train_accs, val_accs, val_accs_top5 = [], [], [], []
     lr_progress = []
     top_train_acc, top_val_acc = 0, 0
+    top_val_f1_weighted = 0
+    top_val_f1_weighted_before = 0
     checkpoint_index = 0
 
     if args.experimental_train_split:
@@ -537,13 +571,16 @@ def train(args):
                 'loss': train_loss
             }, model_save_folder_path + "/checkpoint_model.pth")
 
-            if val_f1_weighted > top_val_acc:
+            if val_acc > top_val_acc:
+                top_val_acc = val_acc
+
+            if val_f1_weighted > top_val_f1_weighted:
+                top_val_f1_weighted = val_f1_weighted
+
                 if val_loader:
                     #log_values['Train_table_stats']   =  wandb.Table(dataframe=df_train_stats)
                     #log_values['Val_table_stats']     =  wandb.Table(dataframe=df_val_stats)
                     log_values['Compare_table_stats'] =  wandb.Table(dataframe=df_merged)
-
-                top_val_acc = val_f1_weighted
 
                 torch.save({
                     'epoch': epoch,
@@ -555,13 +592,17 @@ def train(args):
                 #generate_csv_result(run, slrt_model, val_loader, model_save_folder_path, val_set.inv_dict_labels_dataset, device)
                 #generate_csv_accuracy(df_train_stats, model_save_folder_path,name='/train_accuracy.csv')
                 #generate_csv_accuracy(df_val_stats, model_save_folder_path,name='/evaluate_accuracy.csv')
-                
-                artifact = wandb.Artifact(f'best-model_{run.id}.pth', type='model')
-                artifact.add_file(model_save_folder_path + "/checkpoint_best_model.pth")
-                run.log_artifact(artifact)
                 #wandb.save(model_save_folder_path + "/checkpoint_best_model.pth")
 
                 checkpoint_index += 1
+
+        if epoch%100 == 0:
+            if top_val_f1_weighted!= top_val_f1_weighted_before:
+                top_val_f1_weighted_before = top_val_f1_weighted
+                print("Sending artifact to wandb!")
+                artifact = wandb.Artifact(f'best-model_{run.id}.pth', type='model')
+                artifact.add_file(model_save_folder_path + "/checkpoint_best_model.pth")
+                run.log_artifact(artifact)
 
         if val_loader:
             wandb.log(log_values)
@@ -642,6 +683,8 @@ def train(args):
 
 
 if __name__ == '__main__':
+    
+    atexit.register(finish_process)
     parser = argparse.ArgumentParser("", parents=[get_default_args()], add_help=False)
     args = parser.parse_args()
     
