@@ -40,7 +40,7 @@ parameters:
   weight_decay:
     values: [0.0001]
   dropout:
-    values: [0.8,0.6]
+    values: [0.8,0.7,0.6]
   gaussian_std:
     values: [0.1]
 

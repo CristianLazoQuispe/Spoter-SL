@@ -2,21 +2,21 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [Testing num_heads]
+    values: [Testing weight_decay]
   sweep:
     values: [1]
   lr:
     values: [0.0001] #0.001, 0.00001,
   num_heads:
-    values: [108,54,27,9] # [108,54,27,9,3,1] este debe ser un divisor de hidden_dim 108 : nhead
+    values: [2] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
   num_layers_1:
-    values: [3] #3 [64,12,8,6,4,2,1]
+    values: [3] # [64,12,8,6,4,2,1]
   num_layers_2:
-    values: [27] #2 [128,64,32,16,4,,64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
+    values: [9] # [128,64,32,16,4,,64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
   dim_feedforward:
     values: [8] #
   device:
-    values: [3]
+    values: [2]
   augmentation:
     values: [1]
   factor_aug:
@@ -38,7 +38,7 @@ parameters:
   optimizer:
     values: ['adam']
   weight_decay:
-    values: [0.0001]
+    values: [0.005,0.001,0.0005]
   dropout:
     values: [0.3]
   gaussian_std:
