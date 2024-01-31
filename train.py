@@ -473,11 +473,7 @@ def train(args):
             val_loss, val_acc_top5, val_stats,val_labels_original,val_labels_predicted = evaluate(slrt_model, val_loader, cel_criterion, device,epoch=epoch,args=args)
             slrt_model.train(True)
 
-            val_acc   = f1_score(val_labels_original, val_labels_predicted, average='micro',zero_division=0)
-
-            #train_f1_micro = f1_score(train_labels_original, train_labels_predicted, average='micro',zero_division=0)
-            #val_f1_micro   = f1_score(val_labels_original, val_labels_predicted, average='micro',zero_division=0)
-
+            val_acc           = f1_score(val_labels_original, val_labels_predicted, average='micro',zero_division=0)
             train_f1_weighted = f1_score(train_labels_original, train_labels_predicted, average='weighted',zero_division=0)
             val_f1_weighted   = f1_score(val_labels_original, val_labels_predicted, average='weighted',zero_division=0)
 

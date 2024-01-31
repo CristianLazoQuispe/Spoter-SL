@@ -8,25 +8,25 @@ parameters:
   lr:
     values: [0.0001] #0.001, 0.00001,
   num_heads:
-    values: [2] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
+    values: [9] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
   num_layers_1:
-    values: [3] # [64,12,8,6,4,2,1]
+    values: [8] # [64,12,8,6,4,2,1]
   num_layers_2:
-    values: [2] # [64,12,8,6,4,2,1]
+    values: [8] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
   dim_feedforward:
     values: [8] #
   device:
-    values: [2]
+    values: [3]
   augmentation:
     values: [1]
   factor_aug:
-    values: [2]
+    values: [1]
   batch_name:
     values: [mean_2]
   batch_size:
-    values: [512,256,128,64]
+    values: [8,16,32,64,128,256,512]
   loss_weighted_factor:
-    values: [2]
+    values: [3]
   label_smoothing:
     values: [0.1]
   early_stopping_patience:
@@ -38,9 +38,9 @@ parameters:
   optimizer:
     values: ['adam']
   weight_decay:
-    values: [0.0001]
+    values: [0.0005]
   dropout:
-    values: [0.3]
+    values: [0.7]
   gaussian_std:
     values: [0.1]
 
