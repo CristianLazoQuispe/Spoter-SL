@@ -38,7 +38,7 @@ parameters:
   optimizer:
     values: ['adam']
   weight_decay:
-    values: [0.0001]
+    values: [0.0005,0.0001]
   dropout:
     values: [0.5]
   gaussian_std:
