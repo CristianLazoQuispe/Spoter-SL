@@ -8,11 +8,11 @@ parameters:
   lr:
     values: [0.0001] #0.001, 0.00001,
   num_heads:
-    values: [9] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
+    values: [2,6,9] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
   num_layers_1:
-    values: [8] # [64,12,8,6,4,2,1]
+    values: [2,6,9] # [64,12,8,6,4,2,1]
   num_layers_2:
-    values: [8] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
+    values: [2,6,9] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
   dim_feedforward:
     values: [16] #
   device:
