@@ -201,6 +201,13 @@ def train(args):
     global run,model_save_folder_path
     global top_val_f1_weighted,top_val_f1_weighted_before
 
+
+    if args.validation_set == "from-file":
+        if args.validation_set_path == "":
+            args.validation_set_path = args.training_set_path.replace("Train","Val")
+
+
+
     # MARK: TRAINING PREPARATION AND MODULES
     run = wandb.init(project=PROJECT_WANDB, 
                      entity=ENTITY,
@@ -209,8 +216,6 @@ def train(args):
                      job_type="model-training",
                      tags=["paper"])
 
-
-    
     # Initialize all the random seeds
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -450,6 +455,9 @@ def train(args):
     
     previous_val_loss = 0
     previous_val_acc  = 0 
+
+    print("training_set_path   :",args.training_set_path)
+    print("validation_set_path :",args.validation_set_path)
 
     for epoch in range(epoch_start, args.epochs):
 
