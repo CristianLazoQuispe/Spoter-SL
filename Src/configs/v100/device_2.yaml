@@ -2,21 +2,28 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [Testing loss_weighted_factor]
+    values: [Testing new 2 folds seed 123 -c3nvlink]
+    
+  training_set_path:
+    values: ["../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_2_seed_123_klod_1-Train.hdf5",
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_2_seed_123_klod_2-Train.hdf5",
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_2_seed_123_klod_3-Train.hdf5"]
+  validation_set_path:
+    values: [""]
   sweep:
     values: [1]
   lr:
     values: [0.0001] #0.001, 0.00001,
   num_heads:
-    values: [2,6,9] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
+    values: [9] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
   num_layers_1:
-    values: [2,6,9] # [64,12,8,6,4,2,1]
+    values: [3] # [64,12,8,6,4,2,1]
   num_layers_2:
-    values: [2,6,9] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
+    values: [27] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
   dim_feedforward:
-    values: [16] #
+    values: [8] #
   device:
-    values: [2]
+    values: [0]
   augmentation:
     values: [1]
   factor_aug:
@@ -24,9 +31,9 @@ parameters:
   batch_name:
     values: [mean_2]
   batch_size:
-    values: [64]
+    values: [32]
   loss_weighted_factor:
-    values: [5,4,3,2,1]
+    values: [2]
   label_smoothing:
     values: [0.1]
   early_stopping_patience:
@@ -38,9 +45,9 @@ parameters:
   optimizer:
     values: ['adam']
   weight_decay:
-    values: [0.0005]
+    values: [0.0001]
   dropout:
-    values: [0.5]
+    values: [0.3,0.5]
   gaussian_std:
     values: [0.1]
 
