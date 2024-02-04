@@ -24,7 +24,7 @@ parameters:
   dim_feedforward:
     values: [8] #
   device:
-    values: [0]
+    values: [2]
   augmentation:
     values: [1]
   factor_aug:
