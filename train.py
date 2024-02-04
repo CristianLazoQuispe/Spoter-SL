@@ -127,8 +127,8 @@ def get_default_args():
 
     # Scheduler
     parser.add_argument("--scheduler", type=str, default="", help="Factor for the steplr plateu scheduler")
-    parser.add_argument("--scheduler_factor", type=int, default=0.9, help="Factor for the ReduceLROnPlateau scheduler")
-    parser.add_argument("--scheduler_patience", type=int, default=5,
+    parser.add_argument("--scheduler_factor", type=int, default=0.95, help="Factor for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--scheduler_patience", type=int, default=10,
                         help="Patience for the ReduceLROnPlateau scheduler")
 
     # Gaussian noise normalization
@@ -360,7 +360,7 @@ def train(args):
     if args.scheduler == 'steplr':
         lr_scheduler = optim.lr_scheduler.StepLR(sgd_optimizer, step_size=1, gamma=0.9995)
     if args.scheduler == 'plateu':
-        lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='min', factor=args.scheduler_factor, patience=args.scheduler_patience, verbose=False)
+        lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='min', factor=args.scheduler_factor, patience=args.scheduler_patience, verbose=False,threshold=0.0001, threshold_mode='rel',cooldown=0, min_lr=0, eps=1e-08)
 
 
     # Ensure that the path for checkpointing and for images both exist
