@@ -69,14 +69,14 @@ def custom_collate_fn(batch):
 
 
 
-PROJECT_WANDB = "SLR_2023"#Spoter-as-orignal"
-ENTITY = "ml_projects" #c-vasquezr
 
 from dotenv import load_dotenv
 import os
 load_dotenv()
 
 os.environ["WANDB_API_KEY"] =  os.getenv("WANDB_API_KEY")
+PROJECT_WANDB =  os.getenv("PROJECT_WANDB")
+ENTITY        =  os.getenv("ENTITY")
 
 def get_default_args():
     parser = argparse.ArgumentParser(add_help=False)
@@ -260,15 +260,14 @@ def train(args):
 
     # Validation set
     if args.validation_set == "from-file":
-        if args.augmentation:
-            print("AUGMENTATION UN VALIDATION")
-            val_set = LSP_Dataset(args.validation_set_path, keypoints_model='mediapipe', have_aumentation=False,has_normalization=False,factor=args.factor_aug)
-            val_loader = AugmentedDataLoader(val_set, shuffle=True, generator=g)
-        else:
-            print("NO AUGMENTATION UN VALIDATION")
-            val_set = LSP_Dataset(args.validation_set_path, keypoints_model='mediapipe', have_aumentation=False,has_normalization=True)
-        
-            val_loader = DataLoader(val_set, shuffle=True, generator=g)
+        #if args.augmentation:
+        #    print("AUGMENTATION UN VALIDATION")
+        #    val_set = LSP_Dataset(args.validation_set_path, keypoints_model='mediapipe', have_aumentation=False,has_normalization=False,factor=args.factor_aug)
+        #    val_loader = AugmentedDataLoader(val_set, shuffle=True, generator=g)
+        #else:
+        print("NO AUGMENTATION UN VALIDATION")
+        val_set = LSP_Dataset(args.validation_set_path, keypoints_model='mediapipe', have_aumentation=False,has_normalization=True)
+        val_loader = DataLoader(val_set, shuffle=True, generator=g)
 
     elif args.validation_set == "split-from-train":
         train_set, val_set = __balance_val_split(train_set, 0.2)
