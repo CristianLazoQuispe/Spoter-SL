@@ -25,6 +25,7 @@ from Src.spoter.spoter_model import SPOTER
 from Src.spoter.utils import train_epoch, evaluate, generate_csv_result, generate_csv_accuracy
 from Src.spoter.gaussian_noise import GaussianNoise
 from Src.spoter.gpu import configurar_cuda_visible
+from Src.spoter.optimizer import dynamic_weight_decay
 import wandb
 from torch.nn.utils.rnn import pad_sequence
 from sklearn.metrics import f1_score
@@ -127,9 +128,12 @@ def get_default_args():
 
     # Scheduler
     parser.add_argument("--scheduler", type=str, default="", help="Factor for the steplr plateu scheduler")
-    parser.add_argument("--scheduler_factor", type=int, default=0.95, help="Factor for the ReduceLROnPlateau scheduler")
-    parser.add_argument("--scheduler_patience", type=int, default=15,
-                        help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--scheduler_patience", type=int, default=15,help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--scheduler_factor", type=float, default=0.95, help="Factor for the ReduceLROnPlateau scheduler")
+
+    parser.add_argument("--weight_decay_patience", type=int, default=15,help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--weight_decay_max", type=float, default=0.001,help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--weight_decay_min", type=float, default=0.000001,help="Patience for the ReduceLROnPlateau scheduler")
 
     # Gaussian noise normalization
     parser.add_argument("--gaussian_mean", type=float, default=0.0, help="Mean parameter for Gaussian noise layer")
@@ -364,17 +368,10 @@ def train(args):
     if args.scheduler == 'plateu':
         lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='min', factor=args.scheduler_factor, patience=args.scheduler_patience, verbose=False,threshold=0.0001, threshold_mode='rel',cooldown=0, min_lr=0, eps=1e-08)
 
+        wd_scheduler = dynamic_weight_decay(weight_decay_patience = args.weight_decay_patience,
+            weight_decay_max = args.weight_decay_max,
+            weight_decay_min = args.weight_decay_min)
 
-        def dynamic_weight_decay(train_loss, val_loss, weight_decay):
-            loss_diff = val_loss-train_loss
-            if loss_diff > 0.2:
-                # Aumentar weight decay : mas regularizacion
-                return 1.05*weight_decay 
-            elif loss_diff < 0.01:
-                # Disminuir weight decay
-                return 0.95*weight_decay
-            else:
-                return weight_decay
             
 
     # Ensure that the path for checkpointing and for images both exist
@@ -568,7 +565,7 @@ def train(args):
                 lr_scheduler.step(val_loss)
                 # Actualizar weight decay
                 weight_decay = sgd_optimizer.param_groups[0]['weight_decay']
-                weight_decay = dynamic_weight_decay(train_loss, val_loss, weight_decay)
+                weight_decay = wd_scheduler.step(train_loss, val_loss, weight_decay)
                 sgd_optimizer.param_groups[0]['weight_decay'] = weight_decay
 
 

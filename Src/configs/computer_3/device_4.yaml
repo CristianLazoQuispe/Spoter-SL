@@ -2,16 +2,20 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [Testing new 5 folds seed 42 -c3nvlink]
-    
+    values: [Testing new 5 folds seed 42 new_decay-c3nvlink]
   training_set_path:
-    values: ["../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_42_klod_1-Train.hdf5",
+    values: [
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_42_klod_1-Train.hdf5",
     "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_42_klod_2-Train.hdf5",
     "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_42_klod_3-Train.hdf5",
     "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_42_klod_4-Train.hdf5",
-    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_42_klod_5-Train.hdf5",]
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_42_klod_5-Train.hdf5"]
   validation_set_path:
     values: [""]
+  data_fold:
+    values: [5]
+  data_seed:
+    values: [42]
   sweep:
     values: [1]
   lr:
@@ -31,7 +35,7 @@ parameters:
   factor_aug:
     values: [2,3,4]
   batch_name:
-    values: [mean_2]
+    values: [mean_1]
   batch_size:
     values: [32]
   loss_weighted_factor:
