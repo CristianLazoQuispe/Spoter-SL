@@ -366,9 +366,9 @@ def train(args):
 
 
         def dynamic_weight_decay(train_loss, val_loss, weight_decay):
-            loss_diff = train_loss - val_loss
+            loss_diff = val_loss-train_loss
             if loss_diff > 0.2:
-                # Aumentar weight decay 
+                # Aumentar weight decay : mas regularizacion
                 return 1.05*weight_decay 
             elif loss_diff < 0.01:
                 # Disminuir weight decay
