@@ -128,7 +128,7 @@ def get_default_args():
     # Scheduler
     parser.add_argument("--scheduler", type=str, default="", help="Factor for the steplr plateu scheduler")
     parser.add_argument("--scheduler_factor", type=int, default=0.95, help="Factor for the ReduceLROnPlateau scheduler")
-    parser.add_argument("--scheduler_patience", type=int, default=10,
+    parser.add_argument("--scheduler_patience", type=int, default=15,
                         help="Patience for the ReduceLROnPlateau scheduler")
 
     # Gaussian noise normalization
@@ -165,6 +165,8 @@ def get_default_args():
                         help="Loss crossentropy weighted ")
     parser.add_argument("--dropout", type=float, default=0.1,
                         help="dropout weighted ")                                                
+    parser.add_argument("--data_fold", type=int, default=5,help="")
+    parser.add_argument("--data_seed", type=int, default=42,help="")
                                                 
                            
 
@@ -363,6 +365,18 @@ def train(args):
         lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='min', factor=args.scheduler_factor, patience=args.scheduler_patience, verbose=False,threshold=0.0001, threshold_mode='rel',cooldown=0, min_lr=0, eps=1e-08)
 
 
+        def dynamic_weight_decay(train_loss, val_loss, weight_decay):
+            loss_diff = val_loss-train_loss
+            if loss_diff > 0.2:
+                # Aumentar weight decay : mas regularizacion
+                return 1.05*weight_decay 
+            elif loss_diff < 0.01:
+                # Disminuir weight decay
+                return 0.95*weight_decay
+            else:
+                return weight_decay
+            
+
     # Ensure that the path for checkpointing and for images both exist
     Path("Results/").mkdir(parents=True, exist_ok=True)
     Path("Results/checkpoints/" + args.experiment_name + "/").mkdir(parents=True, exist_ok=True)
@@ -525,12 +539,7 @@ def train(args):
         total_time = time.time()-start_time
 
 
-        if args.scheduler == 'steplr':
-            lr_scheduler.step()
-        if args.scheduler == 'plateu' and val_acc>0:
-            if val_loss is not None:
-                lr_scheduler.step(val_loss)
-
+                
         if val_loss is not None:
             previous_val_loss = val_loss
         if val_acc is not None:
@@ -538,6 +547,7 @@ def train(args):
         if val_loader:
             log_values = {
                 'current_lr':current_lr,
+                'current_weight_decay':sgd_optimizer.param_groups[0]['weight_decay'],
                 'train_acc': train_acc,
                 'train_loss': train_loss,
                 'val_acc': previous_val_acc,
@@ -549,6 +559,18 @@ def train(args):
                 'val_f1_weighted':val_f1_weighted,
                 'total_time':total_time
             }
+
+        if args.scheduler == 'steplr':
+            lr_scheduler.step()
+
+        if args.scheduler == 'plateu' and val_acc>0:
+            if val_loss is not None:
+                lr_scheduler.step(val_loss)
+                # Actualizar weight decay
+                weight_decay = sgd_optimizer.param_groups[0]['weight_decay']
+                weight_decay = dynamic_weight_decay(train_loss, val_loss, weight_decay)
+                sgd_optimizer.param_groups[0]['weight_decay'] = weight_decay
+
 
         """
         if val_loader:
