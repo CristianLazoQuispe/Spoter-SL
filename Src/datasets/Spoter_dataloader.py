@@ -266,7 +266,7 @@ class LSP_Dataset(Dataset):
         """
         #depth_map = torch.from_numpy(np.copy(self.data[idx]))
         #depth_map = depth_map.to('cuda')
-        depth_map = torch.tensor(self.data_normalized[idx], device='cuda')#.clone()
+        depth_map = torch.tensor(self.data[idx], device='cuda')#.clone()
 
         # Apply potential augmentations
         if self.have_aumentation and random.random() < self.augmentations_prob:
