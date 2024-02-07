@@ -131,6 +131,7 @@ def get_default_args():
     parser.add_argument("--scheduler_patience", type=int, default=15,help="Patience for the ReduceLROnPlateau scheduler")
     parser.add_argument("--scheduler_factor", type=float, default=0.99, help="Factor for the ReduceLROnPlateau scheduler")
 
+    parser.add_argument("--weight_decay_dynamic", type=int, default=0,help="Patience for the ReduceLROnPlateau scheduler")
     parser.add_argument("--weight_decay_patience", type=int, default=5,help="Patience for the ReduceLROnPlateau scheduler")
     parser.add_argument("--weight_decay_max", type=float, default=0.005,help="Patience for the ReduceLROnPlateau scheduler")
     parser.add_argument("--weight_decay_min", type=float, default=0.00005,help="Patience for the ReduceLROnPlateau scheduler")
@@ -367,10 +368,10 @@ def train(args):
         lr_scheduler = optim.lr_scheduler.StepLR(sgd_optimizer, step_size=1, gamma=0.9995)
     if args.scheduler == 'plateu':
         lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='min', factor=args.scheduler_factor, patience=args.scheduler_patience, verbose=False,threshold=0.0001, threshold_mode='rel',cooldown=0, min_lr=0, eps=1e-08)
-
-        wd_scheduler = dynamic_weight_decay(weight_decay_patience = args.weight_decay_patience,
-            weight_decay_max = args.weight_decay_max,
-            weight_decay_min = args.weight_decay_min)
+        if args.weight_decay_dynamic:
+            wd_scheduler = dynamic_weight_decay(weight_decay_patience = args.weight_decay_patience,
+                weight_decay_max = args.weight_decay_max,
+                weight_decay_min = args.weight_decay_min)
 
             
 
@@ -564,9 +565,10 @@ def train(args):
             if val_loss is not None:
                 lr_scheduler.step(val_loss)
                 # Actualizar weight decay
-                weight_decay = sgd_optimizer.param_groups[0]['weight_decay']
-                weight_decay = wd_scheduler.step(train_loss, val_loss, weight_decay)
-                sgd_optimizer.param_groups[0]['weight_decay'] = weight_decay
+                if args.weight_decay_dynamic:
+                    weight_decay = sgd_optimizer.param_groups[0]['weight_decay']
+                    weight_decay = wd_scheduler.step(train_loss, val_loss, weight_decay)
+                    sgd_optimizer.param_groups[0]['weight_decay'] = weight_decay
 
 
         """

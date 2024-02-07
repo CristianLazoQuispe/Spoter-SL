@@ -2,21 +2,20 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [Testing new 5 folds seed 12 -v100]
-    
+    values: [Testing new 5 folds seed 1 new_decay+batchnorm-c3v100]
   training_set_path:
     values: [
-    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_12_klod_1-Train.hdf5",
-    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_12_klod_2-Train.hdf5",
-    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_12_klod_3-Train.hdf5",
-    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_12_klod_4-Train.hdf5",
-    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_12_klod_5-Train.hdf5"]
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_1_klod_1-Train.hdf5",
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_1_klod_2-Train.hdf5",
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_1_klod_3-Train.hdf5",
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_1_klod_4-Train.hdf5",
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_1_klod_5-Train.hdf5"]
   validation_set_path:
     values: [""]
   data_fold:
     values: [5]
   data_seed:
-    values: [12]
+    values: [42]
   sweep:
     values: [1]
   lr:
@@ -42,7 +41,7 @@ parameters:
   loss_weighted_factor:
     values: [2]
   label_smoothing:
-    values: [0.1]
+    values: [0]
   early_stopping_patience:
     values: [300]
   epochs:
