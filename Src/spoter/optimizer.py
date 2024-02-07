@@ -23,15 +23,15 @@ class dynamic_weight_decay:
             self.patience_counter_min = 0
             if self.patience_counter_max>=self.weight_decay_patience:
                 self.patience_counter_max = 0
-                return min(1.5*weight_decay,self.weight_decay_max)
+                weight_decay = min((12/10.0)*weight_decay,self.weight_decay_max)
         if (loss_diff<self.loss_diff_back):
             self.patience_counter_min+=1
             self.patience_counter_max=0
             # Disminuir weight decay
             if self.patience_counter_min>=self.weight_decay_patience:
                 self.patience_counter_min = 0
-                return max(0.5*weight_decay,self.weight_decay_min)
-
+                weight_decay = max((10/12.0)*weight_decay,self.weight_decay_min)
+        self.loss_diff_back = loss_diff
         return weight_decay
     
     def step_v1(self,train_loss, val_loss, weight_decay):
