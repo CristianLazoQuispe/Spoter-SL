@@ -31,7 +31,7 @@ from torch.nn.utils.rnn import pad_sequence
 from sklearn.metrics import f1_score
 import time
 
-
+from Src.spoter import save_artifact
 import atexit
 
 import gc
@@ -263,7 +263,7 @@ def train(args):
     if args.augmentation:
         train_set = LSP_Dataset(args.training_set_path, transform=transform, have_aumentation=False,has_normalization=False, keypoints_model='mediapipe',factor=args.factor_aug)
     else:
-        train_set = LSP_Dataset(args.training_set_path, transform=transform, have_aumentation=True, has_normalization=True,keypoints_model='mediapipe')
+        train_set = LSP_Dataset(args.training_set_path, transform=transform, have_aumentation=False, has_normalization=True,keypoints_model='mediapipe')
 
     # Validation set
     if args.validation_set == "from-file":
@@ -378,6 +378,7 @@ def train(args):
     # Ensure that the path for checkpointing and for images both exist
     Path("Results/").mkdir(parents=True, exist_ok=True)
     Path("Results/checkpoints/" + args.experiment_name + "/").mkdir(parents=True, exist_ok=True)
+    Path("Results/checkpoints/" + args.experiment_name + "/"+args.training_set_path.split("/")[-1]+"/").mkdir(parents=True, exist_ok=True)
     Path("Results/images/metrics/").mkdir(parents=True, exist_ok=True)
     Path("Results/images/histograms/").mkdir(parents=True, exist_ok=True)
     Path("Results/images/keypoints/").mkdir(parents=True, exist_ok=True)
@@ -587,12 +588,19 @@ def train(args):
             
         # Save checkpoints if they are best in the current subset
         if args.save_checkpoints:
-            model_save_folder_path = "Results/checkpoints/" + args.experiment_name
+            model_save_folder_path = os.path.join("Results/checkpoints/" + args.experiment_name,args.training_set_path.split("/")[-1])
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': slrt_model.state_dict(),
                 'optimizer_state_dict': sgd_optimizer.state_dict(),
-                'loss': train_loss
+                'loss': train_loss,
+
+                "lr": lr_scheduler.state_dict(),
+
+                "wandb": save_artifact.WandBID(wandb.run.id).state_dict(),
+                "epoch": save_artifact.Epoch(epoch).state_dict(),
+                "metric_val_acc": save_artifact.Metric(previous_val_acc).state_dict()
+
             }, model_save_folder_path + "/checkpoint_model.pth")
 
             if val_acc > top_val_acc:
@@ -610,7 +618,14 @@ def train(args):
                     'epoch': epoch,
                     'model_state_dict': slrt_model.state_dict(),
                     'optimizer_state_dict': sgd_optimizer.state_dict(),
-                    'loss': train_loss
+                    'loss': train_loss,
+
+                    "lr": lr_scheduler.state_dict(),
+
+                    "wandb": save_artifact.WandBID(wandb.run.id).state_dict(),
+                    "epoch": save_artifact.Epoch(epoch).state_dict(),
+                    "metric_val_acc": save_artifact.Metric(top_val_acc).state_dict()
+
                 }, model_save_folder_path + "/checkpoint_best_model.pth")
                 
                 #generate_csv_result(run, slrt_model, val_loader, model_save_folder_path, val_set.inv_dict_labels_dataset, device)

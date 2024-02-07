@@ -13,6 +13,7 @@ import torch.utils.data as torch_data
 from torch.utils.data import Dataset
 import logging
 import random
+import copy
 
 from .augmentations import augmentations
 
@@ -178,7 +179,7 @@ def normalize_hand(data, body_section_dict):
 # body_part has the specific body part name (ex: pose_left_shoulder, face_right_mouth_down, etc)
 ###################################################################################
 def normalize_pose_hands_function(data, body_section, body_part):
-
+    data = copy.deepcopy(data)
     pose = [pos for pos, body in enumerate(body_section) if body == 'pose' or body == 'face']
     face = [pos for pos, body in enumerate(body_section) if body == 'face']
     leftHand = [pos for pos, body in enumerate(body_section) if body == 'leftHand']

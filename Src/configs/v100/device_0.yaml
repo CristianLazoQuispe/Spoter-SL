@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [Testing new 5 folds seed 1 new_decay+batchnorm-c3v100]
+    values: [original dataloader fold-5-seed-1-v100]
   training_set_path:
     values: [
     "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_1_klod_1-Train.hdf5",
@@ -15,7 +15,7 @@ parameters:
   data_fold:
     values: [5]
   data_seed:
-    values: [42]
+    values: [1]
   sweep:
     values: [1]
   lr:
@@ -31,7 +31,7 @@ parameters:
   device:
     values: [0]
   augmentation:
-    values: [1]
+    values: [0]
   factor_aug:
     values: [2,3,4]
   batch_name:
@@ -43,15 +43,17 @@ parameters:
   label_smoothing:
     values: [0]
   early_stopping_patience:
-    values: [300]
+    values: [100]
   epochs:
-    values: [300]
+    values: [1000]
   scheduler:
     values: ["plateu"]
   optimizer:
     values: ['adam']
   weight_decay:
     values: [0.0001]
+  weight_decay_dynamic:
+    values: [0]
   dropout:
     values: [0.3]
   gaussian_std:
