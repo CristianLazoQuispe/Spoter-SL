@@ -1,5 +1,5 @@
 class dynamic_weight_decay:
-
+    # segunda version puede ser con la razon de cambio de la diferencia
     def __init__(self,weight_decay_patience = 15,
         weight_decay_max = 0.005,
         weight_decay_min = 0.00005):
