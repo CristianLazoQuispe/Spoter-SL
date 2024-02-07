@@ -29,7 +29,7 @@ parameters:
   dim_feedforward:
     values: [8] #
   device:
-    values: [0]
+    values: [3]
   augmentation:
     values: [0]
   factor_aug:
@@ -43,9 +43,9 @@ parameters:
   label_smoothing:
     values: [0]
   early_stopping_patience:
-    values: [300]
+    values: [100]
   epochs:
-    values: [300]
+    values: [1000]
   scheduler:
     values: ["plateu"]
   optimizer:
