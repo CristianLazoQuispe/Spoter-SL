@@ -47,7 +47,7 @@ class SPOTER(nn.Module):
         super().__init__()
 
         self.row_embed_aux = nn.Parameter(torch.rand(num_rows, hidden_dim))
-        
+        self.hidden_dim = hidden_dim
         self.pos = nn.Parameter(torch.cat([self.row_embed_aux[0].unsqueeze(0).repeat(1, 1, 1)], dim=-1).flatten(0, 1).unsqueeze(0))
         self.class_query = nn.Parameter(torch.rand(1, hidden_dim))
         self.transformer = nn.Transformer(hidden_dim, num_heads, num_layers_1, num_layers_2)
@@ -57,6 +57,7 @@ class SPOTER(nn.Module):
                                                              dim_feedforward, dropout=dropout, activation="relu")
 
         self.dropout1 = nn.Dropout(dropout)
+        self.act_relu = nn.ReLU()
 
         print("=="*30)
         print("=="*30)
@@ -94,9 +95,9 @@ class SPOTER(nn.Module):
         h = self.transformer(aux, self.class_query.unsqueeze(0)).transpose(0, 1)
         print(f"h      shape: {h.shape}") if show else None
 
-        h = self.dropout1(h) 
+        h = self.act_relu(h)
+        h = self.dropout1(h)
         res = self.linear_class(h)
-        res = nn.functional.relu(res)
         print(f"res    shape: {res.shape}") if show else None
         return res
 

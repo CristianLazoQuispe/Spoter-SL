@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [Testing new 5 folds seed 42 new_decay-c3nvlink]
+    values: [Testing new 5 folds seed 42 new_decay+batchnorm-c3nvlink]
   training_set_path:
     values: [
     "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_42_klod_1-Train.hdf5",
@@ -41,7 +41,7 @@ parameters:
   loss_weighted_factor:
     values: [2]
   label_smoothing:
-    values: [0.1]
+    values: [0]
   early_stopping_patience:
     values: [300]
   epochs:
