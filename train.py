@@ -132,7 +132,7 @@ def get_default_args():
     parser.add_argument("--scheduler_factor", type=float, default=0.99, help="Factor for the ReduceLROnPlateau scheduler")
 
     parser.add_argument("--weight_decay_dynamic", type=int, default=0,help="Patience for the ReduceLROnPlateau scheduler")
-    parser.add_argument("--weight_decay_patience", type=int, default=5,help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--weight_decay_patience", type=int, default=1,help="Patience for the ReduceLROnPlateau scheduler")
     parser.add_argument("--weight_decay_max", type=float, default=0.005,help="Patience for the ReduceLROnPlateau scheduler")
     parser.add_argument("--weight_decay_min", type=float, default=0.00005,help="Patience for the ReduceLROnPlateau scheduler")
 
