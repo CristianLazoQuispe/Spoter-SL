@@ -166,7 +166,7 @@ def get_dataset_from_hdf5(path,keypoints_model,landmarks_ref,keypoints_number,th
     print('total unique labels : ',len(set(labels_dataset)))
     print('Reading dataset completed!')
 
-    return video_dataset, video_name_dataset, labels_dataset, encoded_dataset, dict_labels_dataset, inv_dict_labels_dataset, df_keypoints['Section'], section_keypoints
+    return video_dataset, video_name_dataset, labels_dataset, encoded_dataset, dict_labels_dataset, inv_dict_labels_dataset, df_keypoints['Section'], section_keypoints,df_keypoints
 
 class LSP_Dataset(Dataset):
     """Advanced object representation of the HPOES dataset for loading hand joints landmarks utilizing the Torch's
@@ -206,7 +206,7 @@ class LSP_Dataset(Dataset):
         print('self.list_labels_banned',self.list_labels_banned)
         logging.info('self.list_labels_banned '+str(self.list_labels_banned))
 
-        video_dataset, video_name_dataset, labels_dataset, encoded_dataset, dict_labels_dataset, inv_dict_labels_dataset, body_section, body_part = get_dataset_from_hdf5(path=dataset_filename,
+        video_dataset, video_name_dataset, labels_dataset, encoded_dataset, dict_labels_dataset, inv_dict_labels_dataset, body_section, body_part,df_keypoints = get_dataset_from_hdf5(path=dataset_filename,
                                 keypoints_model=keypoints_model,
                                 landmarks_ref=landmarks_ref,
                                 keypoints_number = keypoints_number,
@@ -215,9 +215,26 @@ class LSP_Dataset(Dataset):
                                 dict_labels_dataset=dict_labels_dataset,
                                 inv_dict_labels_dataset=inv_dict_labels_dataset)
         # HAND AND POSE NORMALIZATION
-        video_dataset, keypoint_body_part_index, body_section_dict = normalize_pose_hands_function(video_dataset, body_section, body_part)
+        print("# HAND AND POSE NORMALIZATION")
+        print("# HAND AND POSE NORMALIZATION")
+        print("# HAND AND POSE NORMALIZATION")
+
+        pose = [pos for pos, body in enumerate(body_section) if body == 'pose' or body == 'face']
+        face = [pos for pos, body in enumerate(body_section) if body == 'face']
+        leftHand = [pos for pos, body in enumerate(body_section) if body == 'leftHand']
+        rightHand = [pos for pos, body in enumerate(body_section) if body == 'rightHand']
+
+
+        prepare_keypoints_image(video_dataset[2][0][leftHand+rightHand+pose,:],"befor2")
+        video_dataset_normalized, keypoint_body_part_index, body_section_dict = normalize_pose_hands_function(video_dataset, body_section, body_part)
+        prepare_keypoints_image(video_dataset[2][0][leftHand+rightHand+pose,:],"after2")
+
+        self.df_keypoints = df_keypoints
+        self.keypoint_body_part_index = keypoint_body_part_index
+        self.body_section_dict = body_section_dict
 
         self.data = video_dataset
+        self.data_normalized = video_dataset_normalized
         self.video_name = video_name_dataset
         self.labels = encoded_dataset
         self.label_freq = Counter(self.labels)
@@ -249,7 +266,7 @@ class LSP_Dataset(Dataset):
         """
         #depth_map = torch.from_numpy(np.copy(self.data[idx]))
         #depth_map = depth_map.to('cuda')
-        depth_map = torch.tensor(self.data[idx], device='cuda')#.clone()
+        depth_map = torch.tensor(self.data_normalized[idx], device='cuda')#.clone()
 
         # Apply potential augmentations
         if self.have_aumentation and random.random() < self.augmentations_prob:

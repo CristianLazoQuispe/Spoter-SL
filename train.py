@@ -263,7 +263,7 @@ def train(args):
     if args.augmentation:
         train_set = LSP_Dataset(args.training_set_path, transform=transform, have_aumentation=False,has_normalization=False, keypoints_model='mediapipe',factor=args.factor_aug)
     else:
-        train_set = LSP_Dataset(args.training_set_path, transform=transform, have_aumentation=True, has_normalization=True,keypoints_model='mediapipe')
+        train_set = LSP_Dataset(args.training_set_path, transform=transform, have_aumentation=False, has_normalization=True,keypoints_model='mediapipe')
 
     # Validation set
     if args.validation_set == "from-file":
