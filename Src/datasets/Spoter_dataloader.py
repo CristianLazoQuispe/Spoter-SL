@@ -274,13 +274,13 @@ class LSP_Dataset(Dataset):
             selected_aug = random.randrange(4)
 
             if selected_aug == 0:
-                depth_map = self.augmentation.augment_rotate(depth_map, angle_range=(-13, 13))
+                depth_map = self.augmentation.augment_rotate(depth_map, angle_range=(-33, 33))
 
             if selected_aug == 1:
-                depth_map = self.augmentation.augment_shear(depth_map, "perspective", squeeze_ratio=(0, 0.1))
+                depth_map = self.augmentation.augment_shear(depth_map, "perspective", squeeze_ratio=(-0.3, 0.3))
 
             if selected_aug == 2:
-                depth_map = self.augmentation.augment_shear(depth_map, "squeeze", squeeze_ratio=(0, 0.15))
+                depth_map = self.augmentation.augment_shear(depth_map, "squeeze", squeeze_ratio=(0.3, -0.3))
 
             if selected_aug == 3:
                 depth_map = self.augmentation.augment_arm_joint_rotate(depth_map, 0.3, angle_range=(-4, 4))

@@ -18,8 +18,8 @@ class augmentation():
         self.BODY_IDENTIFIERS = body_type_identifiers['pose']
         self.HAND_IDENTIFIERS = body_type_identifiers['left_hand'] + body_type_identifiers['rigth_hand']
         
-        Left_hand_id = ['pose_chest_middle_up', 'pose_left_shoulder', 'pose_left_elbow', 'pose_left_wrist']
-        right_hand_id = ['pose_chest_middle_up', 'pose_right_shoulder', 'pose_right_elbow', 'pose_right_wrist']
+        Left_hand_id = ['pose_chest_middle_up', 'pose_left_shoulder', 'pose_left_elbow']#, 'pose_left_wrist']
+        right_hand_id = ['pose_chest_middle_up', 'pose_right_shoulder', 'pose_right_elbow']#, 'pose_right_wrist']
 
         self.ARM_IDENTIFIERS_ORDER = [[body_section_dict[_id] for _id in Left_hand_id ],
                                       [body_section_dict[_id] for _id in right_hand_id]]
@@ -193,12 +193,13 @@ class augmentation():
             return {}
 
 
-        landmarks_array = sign[:,self.BODY_IDENTIFIERS,:]#self.__dictionary_to_numpy(body_landmarks)
+        landmarks_array = sign#[:,self.BODY_IDENTIFIERS,:]#self.__dictionary_to_numpy(body_landmarks)
         augmented_landmarks = cv2.perspectiveTransform(np.array(landmarks_array.cpu(), dtype=np.float32), mtx)
 
         augmented_zero_landmark = cv2.perspectiveTransform(np.array([[[0, 0]]], dtype=np.float32), mtx)[0][0]
         augmented_landmarks = np.stack([np.where(sub == augmented_zero_landmark, [0, 0], sub) for sub in augmented_landmarks])
-        sign[:,self.BODY_IDENTIFIERS,:] = torch.tensor(augmented_landmarks,device=self.device)
+        #[:,self.BODY_IDENTIFIERS,:]
+        sign = torch.tensor(augmented_landmarks,device=self.device)
         #body_landmarks = self.__numpy_to_dictionary(augmented_landmarks)
 
         return sign#self.__wrap_sign_into_row(body_landmarks, hand_landmarks)
