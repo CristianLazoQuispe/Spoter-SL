@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [original dataloader fold-5-seed-1-v100]
+    values: [original +aug fold-5-seed-1-rtx6000]
   training_set_path:
     values: [
     "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_1_klod_1-Train.hdf5",
@@ -31,7 +31,7 @@ parameters:
   device:
     values: [0]
   augmentation:
-    values: [0]
+    values: [1]
   factor_aug:
     values: [2,3,4]
   batch_name:

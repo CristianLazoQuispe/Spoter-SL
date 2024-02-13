@@ -38,16 +38,16 @@ class AugmentedDataLoaderIterator:
                 if random.random() < self.dataset.augmentations_prob:
                     selected_aug = random.randrange(4)
                     if selected_aug == 0:
-                        depth_map = self.dataset.augmentation.augment_rotate(depth_map_original, angle_range=(-13, 13))
+                        depth_map = self.dataset.augmentation.augment_rotate(depth_map_original, angle_range=(-33, 33))
 
                     if selected_aug == 1:
-                        depth_map = self.dataset.augmentation.augment_shear(depth_map_original, "perspective", squeeze_ratio=(0, 0.1))
+                        depth_map = self.dataset.augmentation.augment_shear(depth_map_original, "perspective", squeeze_ratio=(-0.3, 0.3))
 
                     if selected_aug == 2:
-                        depth_map = self.dataset.augmentation.augment_shear(depth_map_original, "squeeze", squeeze_ratio=(0, 0.15))
+                        depth_map = self.dataset.augmentation.augment_shear(depth_map_original, "squeeze", squeeze_ratio=(0.3, -0.3))
 
                     if selected_aug == 3:
-                        depth_map = self.dataset.augmentation.augment_arm_joint_rotate(depth_map_original, 0.3, angle_range=(-4, 4))
+                        depth_map = self.dataset.augmentation.augment_arm_joint_rotate(depth_map_original, 0.5, angle_range=(-15, 15))
 
                 depth_map = depth_map - 0.5
                 #depth_map = depth_map.to('cuda')
