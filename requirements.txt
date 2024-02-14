@@ -7,4 +7,5 @@ scikit-learn
 opencv-python
 wandb
 python-dotenv
-imageio=2.34.0
+imageio==2.34.0
+moviepy==1.0.3

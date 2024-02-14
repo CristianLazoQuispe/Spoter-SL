@@ -58,47 +58,18 @@ class SPOTER(nn.Module):
 
         self.dropout1 = nn.Dropout(dropout)
         self.act_relu = nn.ReLU()
-
-        print("=="*30)
-        print("=="*30)
-        print("=="*30)
-        print("self.row_embed_aux[0]=",self.row_embed_aux[0])
-        print("hidden_dim = ",hidden_dim)
-        print("pos = ",self.pos.shape)
-        print("num_heads=",num_heads)
-        print("num_layers_1=",num_layers_1)
-        print("num_layers_2=",num_layers_2)
-        print("self.transformer.nhead=",self.transformer.nhead)
-        print("self.transformer.decoder.num_layers=",self.transformer.decoder.num_layers)
-        print("=="*30)
-        print("=="*30)
         self.transformer.decoder.layers = _get_clones(custom_decoder_layer, self.transformer.decoder.num_layers)
-
-
-    """
-    def forward(self, inputs):
-        h = torch.unsqueeze(inputs.flatten(start_dim=1), 1).float()
-        h = self.transformer(self.pos + h, self.class_query.unsqueeze(0)).transpose(0, 1)
-        res = self.linear_class(h)
-
-        return res
-    """
+        
+        for param in self.transformer.decoder.layers[:3].parameters():
+            param.requires_grad = False # Congelar capas
+            
     def forward(self, inputs,show=False):
-        print("++"*30) if show else None
-        print("++"*30) if show else None
-        print(f"inputs shape: {inputs.shape}") if show else None
         h = torch.unsqueeze(inputs.flatten(start_dim=1), 1).float()
-        print(f"h      shape: {h.shape}") if show else None
-        print(f"pos    shape: {self.pos.shape}") if show else None
         aux = self.pos + h
-        print(f"aux    shape: {aux.shape}") if show else None
         h = self.transformer(aux, self.class_query.unsqueeze(0)).transpose(0, 1)
-        print(f"h      shape: {h.shape}") if show else None
-
         h = self.act_relu(h)
         h = self.dropout1(h)
         res = self.linear_class(h)
-        print(f"res    shape: {res.shape}") if show else None
         return res
 
 

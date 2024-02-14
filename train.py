@@ -352,7 +352,9 @@ def train(args):
                             num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
                             dim_feedforward=args.dim_feedforward,dropout=args.dropout)
         if args.optimizer == 'adam':
-            sgd_optimizer = optim.Adam(slrt_model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+            #sgd_optimizer = optim.Adam(slrt_model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+            sgd_optimizer = optim.AdamW(slrt_model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+
         else:
             sgd_optimizer = optim.SGD(slrt_model.parameters(), lr=args.lr)
 
@@ -643,14 +645,18 @@ def train(args):
 
         if epoch%100 == 0:
 
-            list_images,filename_train = drawer.get_video_frames_25_glosses(list_depth_map_train,list_label_name_train,suffix='train',save_gif=True)
-            list_images,filename_val   = drawer.get_video_frames_25_glosses(list_depth_map_val,list_label_name_val,suffix='val',save_gif=True)
+            list_images_train,filename_train = drawer.get_video_frames_25_glosses(list_depth_map_train,list_label_name_train,suffix='train',save_gif=True)
             print("sending gif")
-            #wandb.log({"gloss_train_video": wandb.Video(filename_train, format="gif")})
-            #wandb.log({"gloss_val_video": wandb.Video(filename_val, format="gif")})
-            wandb.log({"gloss_train_video": wandb.Video(filename_train, format="mp4")})
-            wandb.log({"gloss_val_video": wandb.Video(filename_val, format="mp4")})
-            
+            #wandb.log({"train_video": wandb.Video(filename_train, fps=1, format="mp4")})
+
+            list_images_val,filename_val   = drawer.get_video_frames_25_glosses(list_depth_map_val,list_label_name_val,suffix='val',save_gif=True)
+            print("sending gif")
+            #wandb.log({"val_video": wandb.Video(filename_val, fps=1,format="mp4")})
+            wandb.log({"gloss_train_video": wandb.Video(filename_train, format="gif")})
+            wandb.log({"gloss_val_video": wandb.Video(filename_val, format="gif")})
+
+
+
 
             if top_val_f1_weighted!= top_val_f1_weighted_before:
                 top_val_f1_weighted_before = top_val_f1_weighted

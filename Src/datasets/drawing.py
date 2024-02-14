@@ -178,6 +178,7 @@ class drawing:
             plt.close(fig)
             img = plt.imread(f'Results/images/keypoints/matrix_25_gloss_{suffix}.jpg')    
             list_images.append(img) 
+        filename = ''
         if save_gif:
             
             # Crear el GIF   
@@ -187,4 +188,4 @@ class drawing:
             np.save(f'Results/images/keypoints/matrix_25_gloss_{suffix}.npy', list_images)
 
             filename = self.save_video(list_images,suffix=suffix)
-        return list_images, filename
+        return list_images, f'Results/images/keypoints/matrix_25_gloss_{suffix}.gif'

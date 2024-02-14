@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [original +aug fold-5-seed-1-rtx6000]
+    values: [original+aug+adamW fold-5-seed-1-rtx6000]
   training_set_path:
     values: [
     "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_1_klod_1-Train.hdf5",
@@ -21,29 +21,29 @@ parameters:
   lr:
     values: [0.0001] #0.001, 0.00001,
   num_heads:
-    values: [2] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
+    values: [27] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
   num_layers_1:
-    values: [3] # [64,12,8,6,4,2,1]
+    values: [6] # [64,12,8,6,4,2,1]
   num_layers_2:
-    values: [2] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
+    values: [9] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
   dim_feedforward:
-    values: [8] #
+    values: [64] #
   device:
     values: [0]
   augmentation:
     values: [1]
   factor_aug:
-    values: [2,3,4]
+    values: [2,3]
   batch_name:
     values: [mean_1]
   batch_size:
-    values: [32]
+    values: [64]
   loss_weighted_factor:
     values: [2]
   label_smoothing:
-    values: [0]
+    values: [0.1]
   early_stopping_patience:
-    values: [100]
+    values: [400]
   epochs:
     values: [1000]
   scheduler:

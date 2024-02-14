@@ -1,4 +1,3 @@
-
 import torch.nn.utils as nn_utils
 import logging
 import torch
@@ -109,14 +108,19 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
             averaged_loss.backward()
             nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
             optimizer.step()
+            optimizer.zero_grad()
     if batch_name =='mean_2':
         if running_loss>0:
             nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
             optimizer.step()
+            optimizer.zero_grad()
 
     pred_all= 1 if pred_all == 0 else pred_all
     train_loss = None if running_loss == 0 else running_loss/pred_all
 
+    # clear cache
+    torch.cuda.empty_cache()
+    
     return train_loss,stats,labels_original,labels_predicted,list_depth_map_original,list_label_name_original
 
 
