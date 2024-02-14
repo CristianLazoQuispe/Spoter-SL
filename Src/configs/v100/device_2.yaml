@@ -2,20 +2,20 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [original dataloader fold-5-seed-10-v100]
+    values: [original +aug fold-5-seed-65-rtx6000]
   training_set_path:
     values: [
-    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_10_klod_1-Train.hdf5",
-    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_10_klod_2-Train.hdf5",
-    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_10_klod_3-Train.hdf5",
-    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_10_klod_4-Train.hdf5",
-    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_10_klod_5-Train.hdf5"]
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_65_klod_1-Train.hdf5",
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_65_klod_2-Train.hdf5",
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_65_klod_3-Train.hdf5",
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_65_klod_4-Train.hdf5",
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_65_klod_5-Train.hdf5"]
   validation_set_path:
     values: [""]
   data_fold:
     values: [5]
   data_seed:
-    values: [10]
+    values: [1]
   sweep:
     values: [1]
   lr:
@@ -31,7 +31,7 @@ parameters:
   device:
     values: [2]
   augmentation:
-    values: [0]
+    values: [1]
   factor_aug:
     values: [2,3,4]
   batch_name:
@@ -57,7 +57,7 @@ parameters:
   dropout:
     values: [0.3]
   gaussian_std:
-    values: [0.1]
+    values: [0.001]
 
 #python train.py --device=0 --dim_feedforward=128 --lr=0.0001 --num_heads=54 --num_layers_1=32 --num_layers_2=256 --sweep=1 --augmentation=1
 

@@ -40,11 +40,11 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                 print("min inputs:", torch.min(inputs_total).item())
                 print("std inputs:", torch.std(inputs_total).item())
 
+            if i<25:
+                list_depth_map_original.append(inputs_total)
+                list_label_name_original.append(videos_name_total)
 
             for j, (inputs, labels,videos_name) in enumerate(zip(inputs_total,labels_total,videos_name_total)):
-                if j==0 and i<25:
-                    list_depth_map_original.append(inputs)
-                    list_label_name_original.append(videos_name)
 
                 labels = labels.unsqueeze(0)
                 outputs = model(inputs).expand(1, -1, -1)
@@ -138,7 +138,7 @@ def evaluate(model, dataloader, criterion, device,epoch=0,args=None):
         for i, data in tepoch:
 
             #print("data:",data)
-            inputs_total, labels_total, _ = data
+            inputs_total, labels_total, videos_name_total = data
             if inputs_total is None:
                 break
             if i < 2 and epoch==0:
@@ -146,11 +146,11 @@ def evaluate(model, dataloader, criterion, device,epoch=0,args=None):
                 print("max inputs:", torch.max(inputs_total).item())
                 print("min inputs:", torch.min(inputs_total).item())
                 print("std inputs:", torch.std(inputs_total).item())
+            if i<25:
+                list_depth_map_original.append(inputs_total)
+                list_label_name_original.append(videos_name_total)
 
             for j, (inputs, labels,videos_name) in enumerate(zip(inputs_total,labels_total,videos_name_total)):
-                if j==0 and i<25:
-                    list_depth_map_original.append(inputs)
-                    list_label_name_original.append(videos_name)
                 labels = labels.unsqueeze(0)
                 with torch.no_grad():
                     outputs = model(inputs).expand(1, -1, -1)

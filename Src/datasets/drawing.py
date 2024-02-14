@@ -67,7 +67,7 @@ class drawing:
     
         # To print the text
         if text_right!="":
-            img = cv2.putText(img, text_right, (220, 20), cv2.FONT_HERSHEY_SIMPLEX, 
+            img = cv2.putText(img, text_right, (200, 20), cv2.FONT_HERSHEY_SIMPLEX, 
                               fontScale, color, thickness, cv2.LINE_AA)
         if text_left!="":
             img = cv2.putText(img, text_left, (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 
@@ -114,6 +114,29 @@ class drawing:
     
         return connections
 
+    def save_video(self,list_images,suffix='train'):
+        height, width, _ = list_images[0].shape
+        
+        # Definir el nombre del archivo de video de salida
+        video_output = f'Results/images/keypoints/matrix_25_gloss_{suffix}.mp4'
+        
+        # Configurar el objeto VideoWriter de OpenCV
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        video_writer = cv2.VideoWriter(video_output, fourcc, 1, (width, height))
+        
+        # Escribir cada imagen en el video
+        for image in list_images:
+            # Asegúrate de que la imagen sea del tipo uint8
+            image = cv2.cvtColor(image,cv2.COLOR_RGB2BGR)
+            image = image.astype('uint8')
+            # Escribir la imagen en el video
+            video_writer.write(image)
+        
+        # Liberar el objeto VideoWriter
+        video_writer.release()
+        
+        print("Video creado con éxito:", video_output)
+        return video_output
 
     def get_video_frames_25_glosses(self,list_depth_map_original,list_label_name_original,suffix='train',save_gif = True):
         
@@ -163,4 +186,5 @@ class drawing:
             imageio.mimsave(f'Results/images/keypoints/matrix_25_gloss_{suffix}.gif', list_images, fps=1)
             np.save(f'Results/images/keypoints/matrix_25_gloss_{suffix}.npy', list_images)
 
-        return list_images, f'Results/images/keypoints/matrix_25_gloss_{suffix}.gif'
+            filename = self.save_video(list_images,suffix=suffix)
+        return list_images, filename
