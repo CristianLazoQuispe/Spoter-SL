@@ -7,3 +7,4 @@ scikit-learn
 opencv-python
 wandb
 python-dotenv
+imageio=2.34.0

@@ -57,7 +57,7 @@ parameters:
   dropout:
     values: [0.3]
   gaussian_std:
-    values: [0.1]
+    values: [0.001]
 
 #python train.py --device=0 --dim_feedforward=128 --lr=0.0001 --num_heads=54 --num_layers_1=32 --num_layers_2=256 --sweep=1 --augmentation=1
 

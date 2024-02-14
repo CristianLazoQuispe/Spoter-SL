@@ -234,7 +234,21 @@ class augmentation():
         
         return sign
 
+    def get_random_transformation(self,selected_aug,depth_map_original):
+        #print("selected_aug:",selected_aug)
+        if selected_aug == 0:
+            depth_map = self.augment_rotate(depth_map_original, angle_range=(-23, 23))
 
+        if selected_aug == 1:
+            depth_map = self.augment_shear(depth_map_original, "perspective", squeeze_ratio=(-0.3, 0.3))
+
+        if selected_aug == 2:
+            depth_map = self.augment_shear(depth_map_original, "squeeze", squeeze_ratio=(0.3, -0.3))
+
+        if selected_aug == 3:
+            depth_map = self.augment_arm_joint_rotate(depth_map_original, 0.5, angle_range=(-15, 15))
+        return depth_map
+    
     if __name__ == "__main__":
         pass
 

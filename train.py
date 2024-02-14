@@ -367,8 +367,8 @@ def train(args):
     if args.scheduler == 'steplr':
         lr_scheduler = optim.lr_scheduler.StepLR(sgd_optimizer, step_size=1, gamma=0.9995)
     if args.scheduler == 'plateu':
-        #lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='min', factor=args.scheduler_factor, patience=args.scheduler_patience, verbose=False,#threshold=0.0001, threshold_mode='rel',cooldown=0, min_lr=0, eps=1e-08)
-        lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='max', factor=0.1, patience=5, verbose=True)
+        lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='max', factor=args.scheduler_factor, patience=args.scheduler_patience, verbose=False,threshold=0.0001, threshold_mode='rel',cooldown=0, min_lr=0.00001, eps=1e-08)
+        #lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='max', factor=0.1, patience=5, verbose=True)
 
         if args.weight_decay_dynamic:
             wd_scheduler = dynamic_weight_decay(weight_decay_patience = args.weight_decay_patience,
@@ -472,6 +472,13 @@ def train(args):
 
     print("training_set_path   :",args.training_set_path)
     print("validation_set_path :",args.validation_set_path)
+
+    # Ruta del archivo GIF que quieres enviar
+    gif_path = 'Results/images/matriz_25_glosas.gif'
+
+    print("sending gif")
+    # Enviar el archivo a wandb
+    wandb.log({"archivo_gif": wandb.Video(gif_path, format="gif")})
 
     for epoch in range(epoch_start, args.epochs):
 

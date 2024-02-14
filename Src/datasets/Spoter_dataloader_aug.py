@@ -2,6 +2,7 @@ from torch.utils.data import DataLoader
 import math 
 import random
 import torch
+import copy
 
 class AugmentedDataLoader(DataLoader):
     def __init__(self, dataset, shuffle=True, **kwargs):
@@ -32,30 +33,20 @@ class AugmentedDataLoaderIterator:
             depth_map_original, label, video_name = sample
 
             #depth_map_original = depth_map.to("cpu")
-            for cnt in range(int(self.dataset.factors[label.item()]+0.5)):
+            for i in range(int(self.dataset.factors[label.item()]+0.5)):
                 # Apply potential augmentations
-                depth_map = depth_map_original
+                depth_map = copy.deepcopy(depth_map_original)
                 if random.random() < self.dataset.augmentations_prob:
-                    selected_aug = random.randrange(4)
-                    if selected_aug == 0:
-                        depth_map = self.dataset.augmentation.augment_rotate(depth_map_original, angle_range=(-33, 33))
-
-                    if selected_aug == 1:
-                        depth_map = self.dataset.augmentation.augment_shear(depth_map_original, "perspective", squeeze_ratio=(-0.3, 0.3))
-
-                    if selected_aug == 2:
-                        depth_map = self.dataset.augmentation.augment_shear(depth_map_original, "squeeze", squeeze_ratio=(0.3, -0.3))
-
-                    if selected_aug == 3:
-                        depth_map = self.dataset.augmentation.augment_arm_joint_rotate(depth_map_original, 0.5, angle_range=(-15, 15))
+                    n_aug = random.randrange(4)+1 #[1,2,3,4]
+                    #print("n_aug:",n_aug)
+                    for j in range(n_aug):
+                        selected_aug = random.randrange(4)
+                        depth_map = self.dataset.augmentation.get_random_transformation(selected_aug,depth_map)
 
                 depth_map = depth_map - 0.5
-                #depth_map = depth_map.to('cuda')
                 if self.dataset.transform:
+                    # Gaussian Noise
                     depth_map = self.dataset.transform(depth_map)
-                    
-                #depth_map = depth_map.to('cuda')
-                #label = label.to('cuda', dtype=torch.long)
 
                 sample = (depth_map, label, video_name)
                 batch.append(sample)
