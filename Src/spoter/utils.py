@@ -25,10 +25,13 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
 
     optimizer.zero_grad()
 
+    list_depth_map_original = []
+    list_label_name_original = []
+
     with tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Train Epoch {epoch + 1}:',bar_format='{desc:<18.23}{percentage:3.0f}%|{bar:20}{r_bar}') as tepoch:
         for i, data in tepoch:
             #print("data:",data)
-            inputs_total, labels_total, _ = data
+            inputs_total, labels_total, videos_name_total = data
             if inputs_total is None:
                 break
             if i < 2 and epoch==0:
@@ -38,7 +41,11 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                 print("std inputs:", torch.std(inputs_total).item())
 
 
-            for j, (inputs, labels) in enumerate(zip(inputs_total,labels_total)):
+            for j, (inputs, labels,videos_name) in enumerate(zip(inputs_total,labels_total,videos_name_total)):
+                if j==0 and i<25:
+                    list_depth_map_original.append(inputs)
+                    list_label_name_original.append(videos_name)
+
                 labels = labels.unsqueeze(0)
                 outputs = model(inputs).expand(1, -1, -1)
                 loss = criterion(outputs[0], labels[0])
@@ -110,7 +117,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
     pred_all= 1 if pred_all == 0 else pred_all
     train_loss = None if running_loss == 0 else running_loss/pred_all
 
-    return train_loss,stats,labels_original,labels_predicted
+    return train_loss,stats,labels_original,labels_predicted,list_depth_map_original,list_label_name_original
 
 
 def evaluate(model, dataloader, criterion, device,epoch=0,args=None):
@@ -124,7 +131,9 @@ def evaluate(model, dataloader, criterion, device,epoch=0,args=None):
     labels_original = []
     labels_predicted = []
 
-
+    list_depth_map_original = []
+    list_label_name_original = []
+    
     with tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Val   Epoch {epoch + 1}:',bar_format='{desc:<18.23}{percentage:3.0f}%|{bar:20}{r_bar}') as tepoch:
         for i, data in tepoch:
 
@@ -137,8 +146,11 @@ def evaluate(model, dataloader, criterion, device,epoch=0,args=None):
                 print("max inputs:", torch.max(inputs_total).item())
                 print("min inputs:", torch.min(inputs_total).item())
                 print("std inputs:", torch.std(inputs_total).item())
-            
-            for j, (inputs, labels) in enumerate(zip(inputs_total,labels_total)):
+
+            for j, (inputs, labels,videos_name) in enumerate(zip(inputs_total,labels_total,videos_name_total)):
+                if j==0 and i<25:
+                    list_depth_map_original.append(inputs)
+                    list_label_name_original.append(videos_name)
                 labels = labels.unsqueeze(0)
                 with torch.no_grad():
                     outputs = model(inputs).expand(1, -1, -1)
@@ -173,7 +185,7 @@ def evaluate(model, dataloader, criterion, device,epoch=0,args=None):
 
     pred_all= 1 if pred_all == 0 else pred_all
     val_loss = None if running_loss == 0 else running_loss/pred_all
-    return val_loss, (pred_top_5 / pred_all), stats,labels_original,labels_predicted
+    return val_loss, (pred_top_5 / pred_all), stats,labels_original,labels_predicted,list_depth_map_original,list_label_name_original
 
 
 def evaluate_top_k(model, dataloader, device, k=5):

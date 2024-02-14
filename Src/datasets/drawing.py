@@ -163,4 +163,4 @@ class drawing:
             imageio.mimsave(f'Results/images/keypoints/matrix_25_gloss_{suffix}.gif', list_images, fps=1)
             np.save(f'Results/images/keypoints/matrix_25_gloss_{suffix}.npy', list_images)
 
-        return list_images
+        return list_images, f'Results/images/keypoints/matrix_25_gloss_{suffix}.gif'

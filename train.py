@@ -21,6 +21,8 @@ from pathlib import Path
 from Src.datasets.utils_split import __balance_val_split, __split_of_train_sequence, __log_class_statistics
 from Src.datasets.Spoter_dataloader import LSP_Dataset
 from Src.datasets.Spoter_dataloader_aug import AugmentedDataLoader
+from Src.datasets.drawing import drawing
+
 from Src.spoter.spoter_model import SPOTER
 from Src.spoter.utils import train_epoch, evaluate, generate_csv_result, generate_csv_accuracy
 from Src.spoter.gaussian_noise import GaussianNoise
@@ -255,6 +257,7 @@ def train(args):
         device = torch.device("cuda")
 
     
+    drawer = drawing(w = 256,h = 256,path_points= 'Data/points_54.csv')
 
     # DATA LOADER
         # Training set
@@ -473,12 +476,6 @@ def train(args):
     print("training_set_path   :",args.training_set_path)
     print("validation_set_path :",args.validation_set_path)
 
-    # Ruta del archivo GIF que quieres enviar
-    gif_path = 'Results/images/matriz_25_glosas.gif'
-
-    print("sending gif")
-    # Enviar el archivo a wandb
-    wandb.log({"archivo_gif": wandb.Video(gif_path, format="gif")})
 
     for epoch in range(epoch_start, args.epochs):
 
@@ -487,7 +484,7 @@ def train(args):
 
         current_lr = sgd_optimizer.param_groups[0]["lr"]
 
-        train_loss,train_stats,train_labels_original,train_labels_predicted = train_epoch(slrt_model, train_loader, 
+        train_loss,train_stats,train_labels_original,train_labels_predicted,list_depth_map_train,list_label_name_train = train_epoch(slrt_model, train_loader, 
         cel_criterion, sgd_optimizer,device,epoch=epoch,args=args)
         
         train_acc   = f1_score(train_labels_original, train_labels_predicted, average='micro',zero_division=0)
@@ -499,7 +496,7 @@ def train(args):
 
         if val_loader:
             slrt_model.train(False)
-            val_loss, val_acc_top5, val_stats,val_labels_original,val_labels_predicted = evaluate(slrt_model, val_loader, cel_criterion, device,epoch=epoch,args=args)
+            val_loss, val_acc_top5, val_stats,val_labels_original,val_labels_predicted,list_depth_map_val,list_label_name_val = evaluate(slrt_model, val_loader, cel_criterion, device,epoch=epoch,args=args)
             slrt_model.train(True)
 
             val_acc           = f1_score(val_labels_original, val_labels_predicted, average='micro',zero_division=0)
@@ -645,6 +642,14 @@ def train(args):
                 checkpoint_index += 1
 
         if epoch%100 == 0:
+
+            list_images,filename_train = drawer.get_video_frames_25_glosses(list_depth_map_train,list_label_name_train,suffix='train',save_gif=True)
+            list_images,filename_val   = drawer.get_video_frames_25_glosses(list_depth_map_val,list_label_name_val,suffix='val',save_gif=True)
+            print("sending gif")
+            wandb.log({"gloss_train_video": wandb.Video(filename_train, format="gif")})
+            wandb.log({"gloss_val_video": wandb.Video(filename_val, format="gif")})
+
+
             if top_val_f1_weighted!= top_val_f1_weighted_before:
                 top_val_f1_weighted_before = top_val_f1_weighted
                 print("Sending artifact to wandb!")
