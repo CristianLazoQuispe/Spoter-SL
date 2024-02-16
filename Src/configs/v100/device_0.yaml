@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [spoter_new fold-5-seed-1-rtx6000]
+    values: [spoter_new+dimforward fold-5-seed-1-rtx6000]
   training_set_path:
     values: [
     "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_1_klod_1-Train.hdf5",
@@ -26,8 +26,10 @@ parameters:
     values: [3] # [64,12,8,6,4,2,1]
   num_layers_2:
     values: [2] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
-  dim_feedforward:
-    values: [8] #
+  dim_feedforward_encoder:
+    values: [64]
+  dim_feedforward_decoder:
+    values: [256,128,64] #
   device:
     values: [0]
   augmentation:
@@ -43,17 +45,17 @@ parameters:
   label_smoothing:
     values: [0.1]
   early_stopping_patience:
-    values: [200]
+    values: [500]
   epochs:
-    values: [1000]
+    values: [10000]
   scheduler:
     values: ["plateu"]
   optimizer:
     values: ['adam']
   weight_decay:
-    values: [0.001,0.0001]
+    values: [0.0001]
   weight_decay_dynamic:
-    values: [0,1]
+    values: [1]
   dropout:
     values: [0.3]
   gaussian_std:
