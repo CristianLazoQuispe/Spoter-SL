@@ -175,6 +175,7 @@ def get_default_args():
     parser.add_argument("--data_fold", type=int, default=5,help="")
     parser.add_argument("--data_seed", type=int, default=42,help="")
                                                 
+    parser.add_argument("--use_wandb", type=int, default=1,help="")
                            
 
 
@@ -216,14 +217,14 @@ def train(args):
             args.validation_set_path = args.training_set_path.replace("Train","Val")
 
 
-
-    # MARK: TRAINING PREPARATION AND MODULES
-    run = wandb.init(project=PROJECT_WANDB, 
-                     entity=ENTITY,
-                     config=args, 
-                     name=args.experiment_name, 
-                     job_type="model-training",
-                     tags=["paper"])
+    if args.use_wandb:
+        # MARK: TRAINING PREPARATION AND MODULES
+        run = wandb.init(project=PROJECT_WANDB, 
+                        entity=ENTITY,
+                        config=args, 
+                        name=args.experiment_name, 
+                        job_type="model-training",
+                        tags=["paper"])
 
     # Initialize all the random seeds
     random.seed(args.seed)
@@ -264,9 +265,9 @@ def train(args):
     transform = transforms.Compose([GaussianNoise(args.gaussian_mean, args.gaussian_std)])
     
     if args.augmentation:
-        train_set = LSP_Dataset(args.training_set_path, transform=transform, have_aumentation=False,has_normalization=False, keypoints_model='mediapipe',factor=args.factor_aug)
+        train_set = LSP_Dataset(args.training_set_path, transform=transform, has_transformation=False,has_normalization=False, keypoints_model='mediapipe',factor=args.factor_aug)
     else:
-        train_set = LSP_Dataset(args.training_set_path, transform=transform, have_aumentation=False, has_normalization=True,keypoints_model='mediapipe')
+        train_set = LSP_Dataset(args.training_set_path, transform=transform, has_transformation=True, has_normalization=True,keypoints_model='mediapipe')
 
     # Validation set
     if args.validation_set == "from-file":
@@ -276,7 +277,7 @@ def train(args):
         #    val_loader = AugmentedDataLoader(val_set, shuffle=True, generator=g)
         #else:
         print("NO AUGMENTATION UN VALIDATION")
-        val_set = LSP_Dataset(args.validation_set_path, keypoints_model='mediapipe', have_aumentation=False,has_normalization=True)
+        val_set = LSP_Dataset(args.validation_set_path, keypoints_model='mediapipe', has_transformation=False,has_normalization=True)
         val_loader = DataLoader(val_set, shuffle=True, generator=g)
 
     elif args.validation_set == "split-from-train":
@@ -290,7 +291,7 @@ def train(args):
 
     # Testing set
     if args.testing_set_path:
-        eval_set = LSP_Dataset(args.testing_set_path, keypoints_model='mediapipe', have_aumentation=False,has_normalization=True)
+        eval_set = LSP_Dataset(args.testing_set_path, keypoints_model='mediapipe', has_transformation=False,has_normalization=True)
         eval_loader = DataLoader(eval_set, shuffle=True, generator=g)
     else:
         eval_loader = None
@@ -409,16 +410,16 @@ def train(args):
     print("#"*50)
 
 
+    if args.use_wandb:
+        # Log the parameters to wandb
+        wandb.config.update({
+            "total_parameters": total_params,
+            "trainable_parameters": trainable_params,
+            "trainable_parameters_ratio": ratio
+        })
 
-    # Log the parameters to wandb
-    wandb.config.update({
-        "total_parameters": total_params,
-        "trainable_parameters": trainable_params,
-        "trainable_parameters_ratio": ratio
-    })
-
-    config = wandb.config
-    wandb.watch_called = False
+        config = wandb.config
+        wandb.watch_called = False
 
     
     # MARK: TRAINING
@@ -597,31 +598,7 @@ def train(args):
         # Save checkpoints if they are best in the current subset
         if args.save_checkpoints:
             model_save_folder_path = os.path.join("Results/checkpoints/" + args.experiment_name,args.training_set_path.split("/")[-1])
-            torch.save({
-                'epoch': epoch,
-                'model_state_dict': slrt_model.state_dict(),
-                'optimizer_state_dict': sgd_optimizer.state_dict(),
-                'loss': train_loss,
-
-                "lr": lr_scheduler.state_dict(),
-
-                "wandb": save_artifact.WandBID(wandb.run.id).state_dict(),
-                "epoch": save_artifact.Epoch(epoch).state_dict(),
-                "metric_val_acc": save_artifact.Metric(previous_val_acc).state_dict()
-
-            }, model_save_folder_path + "/checkpoint_model.pth")
-
-            if val_acc > top_val_acc:
-                top_val_acc = val_acc
-
-            if val_f1_weighted > top_val_f1_weighted:
-                top_val_f1_weighted = val_f1_weighted
-
-                if val_loader:
-                    #log_values['Train_table_stats']   =  wandb.Table(dataframe=df_train_stats)
-                    #log_values['Val_table_stats']     =  wandb.Table(dataframe=df_val_stats)
-                    log_values['Compare_table_stats'] =  wandb.Table(dataframe=df_merged)
-
+            if args.use_wandb:
                 torch.save({
                     'epoch': epoch,
                     'model_state_dict': slrt_model.state_dict(),
@@ -632,18 +609,54 @@ def train(args):
 
                     "wandb": save_artifact.WandBID(wandb.run.id).state_dict(),
                     "epoch": save_artifact.Epoch(epoch).state_dict(),
-                    "metric_val_acc": save_artifact.Metric(top_val_acc).state_dict()
+                    "metric_val_acc": save_artifact.Metric(previous_val_acc).state_dict()
+                }, model_save_folder_path + "/checkpoint_model.pth")
+            else:
+                torch.save({
+                    'epoch': epoch,
+                    'model_state_dict': slrt_model.state_dict(),
+                    'optimizer_state_dict': sgd_optimizer.state_dict(),
+                    'loss': train_loss,
 
-                }, model_save_folder_path + "/checkpoint_best_model.pth")
+                    "lr": lr_scheduler.state_dict(),
+
+                }, model_save_folder_path + "/checkpoint_model.pth")
+
+            if val_acc > top_val_acc:
+                top_val_acc = val_acc
+
+            if val_f1_weighted > top_val_f1_weighted:
+                top_val_f1_weighted = val_f1_weighted
+
+                if args.use_wandb:
+                    torch.save({
+                        'epoch': epoch,
+                        'model_state_dict': slrt_model.state_dict(),
+                        'optimizer_state_dict': sgd_optimizer.state_dict(),
+                        'loss': train_loss,
+
+                        "lr": lr_scheduler.state_dict(),
+
+                        "wandb": save_artifact.WandBID(wandb.run.id).state_dict(),
+                        "epoch": save_artifact.Epoch(epoch).state_dict(),
+                        "metric_val_acc": save_artifact.Metric(top_val_acc).state_dict()
+
+                    }, model_save_folder_path + "/checkpoint_best_model.pth")
+                else:
+                    torch.save({
+                        'epoch': epoch,
+                        'model_state_dict': slrt_model.state_dict(),
+                        'optimizer_state_dict': sgd_optimizer.state_dict(),
+                        'loss': train_loss,
+
+                        "lr": lr_scheduler.state_dict(),
+
+                    }, model_save_folder_path + "/checkpoint_best_model.pth")
                 
-                #generate_csv_result(run, slrt_model, val_loader, model_save_folder_path, val_set.inv_dict_labels_dataset, device)
-                #generate_csv_accuracy(df_train_stats, model_save_folder_path,name='/train_accuracy.csv')
-                #generate_csv_accuracy(df_val_stats, model_save_folder_path,name='/evaluate_accuracy.csv')
-                #wandb.save(model_save_folder_path + "/checkpoint_best_model.pth")
-
                 checkpoint_index += 1
 
         if epoch%100 == 0:
+
 
             list_images_train,filename_train = drawer.get_video_frames_25_glosses(list_depth_map_train,list_label_name_train,suffix='train',save_gif=True)
             print("sending gif")
@@ -651,39 +664,29 @@ def train(args):
 
             list_images_val,filename_val   = drawer.get_video_frames_25_glosses(list_depth_map_val,list_label_name_val,suffix='val',save_gif=True)
             print("sending gif")
-            #wandb.log({"val_video": wandb.Video(filename_val, fps=1,format="mp4")})
-            wandb.log({"gloss_train_video": wandb.Video(filename_train, format="gif")})
-            wandb.log({"gloss_val_video": wandb.Video(filename_val, format="gif")})
 
 
+            if args.use_wandb:
+                if val_loader:
+                    #log_values['Train_table_stats']   =  wandb.Table(dataframe=df_train_stats)
+                    #log_values['Val_table_stats']     =  wandb.Table(dataframe=df_val_stats)
+                    log_values['Compare_table_stats'] =  wandb.Table(dataframe=df_merged)
+                    #wandb.log({"val_video": wandb.Video(filename_val, fps=1,format="mp4")})
+                    wandb.log({"gloss_train_video": wandb.Video(filename_train, format="gif")})
+                    wandb.log({"gloss_val_video": wandb.Video(filename_val, format="gif")})
 
 
             if top_val_f1_weighted!= top_val_f1_weighted_before:
                 top_val_f1_weighted_before = top_val_f1_weighted
-                print("Sending artifact to wandb!")
-                artifact = wandb.Artifact(f'best-model_{run.id}.pth', type='model')
-                artifact.add_file(model_save_folder_path + "/checkpoint_best_model.pth")
-                run.log_artifact(artifact)
+                if args.use_wandb:
+                    print("Sending artifact to wandb!")
+                    artifact = wandb.Artifact(f'best-model_{run.id}.pth', type='model')
+                    artifact.add_file(model_save_folder_path + "/checkpoint_best_model.pth")
+                    run.log_artifact(artifact)
 
         if val_loader:
-            wandb.log(log_values)
-
-        """
-        if epoch % args.log_freq == 0:
-            print("[" + str(epoch + 1) + "] TRAIN  loss: " + str(train_loss) + " acc: " + str(train_acc))
-            logging.info("[" + str(epoch + 1) + "] TRAIN  loss: " + str(train_loss) + " acc: " + str(train_acc))
-
-            if val_loader:
-                print("[" + str(epoch + 1) + "] VALIDATION  loss: " + str(val_loss) + "acc: " + str(val_acc) + " top-5(acc): " + str(val_acc_top5))
-                logging.info("[" + str(epoch + 1) + "] VALIDATION  loss: " + str(val_loss) + "acc: " + str(val_acc) + " top-5(acc): " + str(val_acc_top5))
-
-            print("")
-            logging.info("")
-        """
-        # Reset the top accuracies on static subsets
-        #if epoch % 10 == 0:
-        #    top_train_acc, top_val_acc, val_acc_top5 = 0, 0, 0
-        #    checkpoint_index += 1
+            if args.use_wandb:
+                wandb.log(log_values)
 
         lr_progress.append(sgd_optimizer.param_groups[0]["lr"])
 
@@ -693,25 +696,6 @@ def train(args):
     logging.info("\nTesting checkpointed models starting...\n")
 
     top_result, top_result_name = 0, ""
-
-    if eval_loader:
-        for i in range(checkpoint_index):
-            for checkpoint_id in ["v"]: #["t", "v"]:
-                # tested_model = VisionTransformer(dim=2, mlp_dim=108, num_classes=100, depth=12, heads=8)
-                tested_model = torch.load("Results/checkpoints/" + args.experiment_name + "/checkpoint_" + checkpoint_id + "_" + str(i) + ".pth")
-                tested_model.train(False)
-                _, _, eval_acc = evaluate(tested_model, eval_loader, device, print_stats=True)
-
-                if eval_acc > top_result:
-                    top_result = eval_acc
-                    top_result_name = args.experiment_name + "/checkpoint_" + checkpoint_id + "_" + str(i)
-
-                print("checkpoint_" + checkpoint_id + "_" + str(i) + "  ->  " + str(eval_acc))
-                logging.info("checkpoint_" + checkpoint_id + "_" + str(i) + "  ->  " + str(eval_acc))
-
-        print("\nThe top result was recorded at " + str(top_result) + " testing accuracy. The best checkpoint is " + top_result_name + ".")
-        logging.info("\nThe top result was recorded at " + str(top_result) + " testing accuracy. The best checkpoint is " + top_result_name + ".")
-
 
     # PLOT 0: Performance (loss, accuracies) chart plotting
     if args.plot_stats:
