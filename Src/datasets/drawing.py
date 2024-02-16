@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import cv2
 import copy
+import os
 
 class drawing:
 
@@ -174,9 +175,10 @@ class drawing:
                     axs[i, j].imshow(img)
                     axs[i, j].axis('off')
             plt.tight_layout() 
-            plt.savefig(f'Results/images/keypoints/matrix_25_gloss_{suffix}.jpg')
+            plt.savefig(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}.jpg')
             plt.close(fig)
-            img = plt.imread(f'Results/images/keypoints/matrix_25_gloss_{suffix}.jpg')    
+            img = plt.imread(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}.jpg')    
+            os.remove(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}.jpg')
             list_images.append(img) 
         filename = ''
         if save_gif:
