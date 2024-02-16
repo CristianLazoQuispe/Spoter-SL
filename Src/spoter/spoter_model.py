@@ -43,7 +43,9 @@ class SPOTER(nn.Module):
     of skeletal data.
     """
 
-    def __init__(self, num_classes, num_rows=64,hidden_dim=108, num_heads=9, num_layers_1=6, num_layers_2=6, dim_feedforward=256,dropout=0.3):
+    def __init__(self, num_classes, num_rows=64,hidden_dim=108, num_heads=9, num_layers_1=6, num_layers_2=6, 
+                            dim_feedforward_encoder=64,
+                            dim_feedforward_decoder=256,dropout=0.3):
         super().__init__()
 
         self.hidden_dim  = hidden_dim
@@ -55,12 +57,12 @@ class SPOTER(nn.Module):
         self.transformer  = nn.Transformer(d_model=hidden_dim, nhead =num_heads,
         num_encoder_layers= num_layers_1, 
         num_decoder_layers= num_layers_2,
-        dim_feedforward = dim_feedforward,
+        dim_feedforward = dim_feedforward_encoder,
         dropout=dropout)
         self.linear_class = nn.Linear(hidden_dim, num_classes)
 
         custom_decoder_layer = SPOTERTransformerDecoderLayer(self.transformer.d_model, self.transformer.nhead,
-                                                             dim_feedforward, dropout=dropout, activation="relu")
+                                                             dim_feedforward_decoder, dropout=dropout, activation="relu")
 
         self.dropout1 = nn.Dropout(dropout)
         self.act_relu = nn.ReLU()
