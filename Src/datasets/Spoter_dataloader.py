@@ -175,7 +175,7 @@ class LSP_Dataset(Dataset):
     data: [np.ndarray]  # type: ignore
     labels: [np.ndarray]  # type: ignore
 
-    def __init__(self, dataset_filename: str,keypoints_model:str,  transform=None, have_aumentation=False,has_normalization=False,
+    def __init__(self, dataset_filename: str,keypoints_model:str,  transform=None, has_transformation=False,has_normalization=False,
                  augmentations_prob=0.5, normalize=False,landmarks_ref= 'Data/Mapeo landmarks librerias.csv',
                 dict_labels_dataset=None,inv_dict_labels_dataset=None, keypoints_number = 54,factor = 2):
         """
@@ -250,7 +250,7 @@ class LSP_Dataset(Dataset):
         self.dict_labels_dataset = dict_labels_dataset
         self.inv_dict_labels_dataset = inv_dict_labels_dataset
         
-        self.have_aumentation = have_aumentation
+        self.has_transformation = has_transformation
         print(keypoint_body_part_index, body_section_dict)
         self.augmentation = augmentations.augmentation(keypoint_body_part_index, body_section_dict,device='cuda')
         self.augmentations_prob = augmentations_prob
@@ -269,21 +269,15 @@ class LSP_Dataset(Dataset):
         depth_map = torch.tensor(self.data[idx], device='cuda')#.clone()
 
         # Apply potential augmentations
-        if self.have_aumentation and random.random() < self.augmentations_prob:
+        if self.has_transformation and random.random() < self.augmentations_prob:
 
-            selected_aug = random.randrange(4)
+            if random.random() < self.augmentations_prob:
+                n_aug = random.randrange(4)+1 #[1,2,3,4]
+                #print("n_aug:",n_aug)
+                for j in range(n_aug):
+                    selected_aug = random.randrange(4)
+                    depth_map = self.augmentation.get_random_transformation(selected_aug,depth_map)
 
-            if selected_aug == 0:
-                depth_map = self.augmentation.augment_rotate(depth_map, angle_range=(-33, 33))
-
-            if selected_aug == 1:
-                depth_map = self.augmentation.augment_shear(depth_map, "perspective", squeeze_ratio=(-0.3, 0.3))
-
-            if selected_aug == 2:
-                depth_map = self.augmentation.augment_shear(depth_map, "squeeze", squeeze_ratio=(0.3, -0.3))
-
-            if selected_aug == 3:
-                depth_map = self.augmentation.augment_arm_joint_rotate(depth_map, 0.3, angle_range=(-4, 4))
         video_name = self.video_name[idx].decode('utf-8')
         label = torch.Tensor([self.labels[idx]])
 

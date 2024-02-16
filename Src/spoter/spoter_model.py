@@ -46,11 +46,17 @@ class SPOTER(nn.Module):
     def __init__(self, num_classes, num_rows=64,hidden_dim=108, num_heads=9, num_layers_1=6, num_layers_2=6, dim_feedforward=256,dropout=0.3):
         super().__init__()
 
-        self.row_embed_aux = nn.Parameter(torch.rand(num_rows, hidden_dim))
-        self.hidden_dim = hidden_dim
-        self.pos = nn.Parameter(torch.cat([self.row_embed_aux[0].unsqueeze(0).repeat(1, 1, 1)], dim=-1).flatten(0, 1).unsqueeze(0))
+        self.hidden_dim  = hidden_dim
+        self.pos         = nn.Parameter(torch.rand(1,1, hidden_dim))
         self.class_query = nn.Parameter(torch.rand(1, hidden_dim))
-        self.transformer = nn.Transformer(hidden_dim, num_heads, num_layers_1, num_layers_2)
+        print("self.pos",self.pos)
+        print("self.pos",self.pos.shape)
+        #https://pytorch.org/docs/stable/generated/torch.nn.Transformer.html
+        self.transformer  = nn.Transformer(d_model=hidden_dim, nhead =num_heads,
+        num_encoder_layers= num_layers_1, 
+        num_decoder_layers= num_layers_2,
+        dim_feedforward = dim_feedforward,
+        dropout=dropout)
         self.linear_class = nn.Linear(hidden_dim, num_classes)
 
         custom_decoder_layer = SPOTERTransformerDecoderLayer(self.transformer.d_model, self.transformer.nhead,
