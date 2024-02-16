@@ -119,7 +119,8 @@ def get_default_args():
     parser.add_argument("--num_heads", type=int, default=9, help="")
     parser.add_argument("--num_layers_1", type=int, default=6, help="")
     parser.add_argument("--num_layers_2", type=int, default=6, help="")
-    parser.add_argument("--dim_feedforward", type=int, default=256, help="")
+    parser.add_argument("--dim_feedforward_encoder", type=int, default=64, help="")
+    parser.add_argument("--dim_feedforward_decoder", type=int, default=256, help="")
 
     parser.add_argument("--early_stopping_patience", type=int, default=200, help="")
     parser.add_argument("--max_acc_difference", type=float, default=0.35, help="")
@@ -130,11 +131,11 @@ def get_default_args():
 
     # Scheduler
     parser.add_argument("--scheduler", type=str, default="", help="Factor for the steplr plateu scheduler")
-    parser.add_argument("--scheduler_patience", type=int, default=15,help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--scheduler_patience", type=int, default=30,help="Patience for the ReduceLROnPlateau scheduler")
     parser.add_argument("--scheduler_factor", type=float, default=0.99, help="Factor for the ReduceLROnPlateau scheduler")
 
     parser.add_argument("--weight_decay_dynamic", type=int, default=0,help="Patience for the ReduceLROnPlateau scheduler")
-    parser.add_argument("--weight_decay_patience", type=int, default=1,help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--weight_decay_patience", type=int, default=10,help="Patience for the ReduceLROnPlateau scheduler")
     parser.add_argument("--weight_decay_max", type=float, default=0.0005,help="Patience for the ReduceLROnPlateau scheduler")
     parser.add_argument("--weight_decay_min", type=float, default=0.00005,help="Patience for the ReduceLROnPlateau scheduler")
 
@@ -315,7 +316,9 @@ def train(args):
         slrt_model = SPOTER(num_classes=args.num_classes, num_rows=args.num_rows,
                             hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
                             num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
-                            dim_feedforward=args.dim_feedforward)
+                            dim_feedforward_encoder=args.dim_feedforward_encoder,
+                            dim_feedforward_decoder=args.dim_feedforward_decoder)
+
         checkpoint = torch.load(args.continue_training)
         slrt_model.load_state_dict(checkpoint['model_state_dict'])
 
@@ -351,7 +354,8 @@ def train(args):
         slrt_model = SPOTER(num_classes=args.num_classes, num_rows=args.num_rows,
                             hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
                             num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
-                            dim_feedforward=args.dim_feedforward,dropout=args.dropout)
+                            dim_feedforward_encoder=args.dim_feedforward_encoder,
+                            dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout)
         if args.optimizer == 'adam':
             #sgd_optimizer = optim.Adam(slrt_model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
             sgd_optimizer = optim.AdamW(slrt_model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
