@@ -135,9 +135,13 @@ def get_default_args():
     parser.add_argument("--scheduler_factor", type=float, default=0.99, help="Factor for the ReduceLROnPlateau scheduler")
 
     parser.add_argument("--weight_decay_dynamic", type=int, default=0,help="Patience for the ReduceLROnPlateau scheduler")
-    parser.add_argument("--weight_decay_patience", type=int, default=10,help="Patience for the ReduceLROnPlateau scheduler")
-    parser.add_argument("--weight_decay_max", type=float, default=0.0005,help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--weight_decay_patience", type=int, default=1,help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--weight_decay_max", type=float, default=0.005,help="Patience for the ReduceLROnPlateau scheduler")
     parser.add_argument("--weight_decay_min", type=float, default=0.00005,help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--weight_decay_kp", type=float, default=0.0001,help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--weight_decay_ki", type=float, default=0.0,help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--weight_decay_kd", type=float, default=0.0,help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--weight_decay_setpoint", type=float, default=0.5,help="Patience for the ReduceLROnPlateau scheduler")
 
     # Gaussian noise normalization
     parser.add_argument("--gaussian_mean", type=float, default=0.0, help="Mean parameter for Gaussian noise layer")
@@ -383,7 +387,11 @@ def train(args):
         if args.weight_decay_dynamic:
             wd_scheduler = dynamic_weight_decay(weight_decay_patience = args.weight_decay_patience,
                 weight_decay_max = args.weight_decay_max,
-                weight_decay_min = args.weight_decay_min)
+                weight_decay_min = args.weight_decay_min,
+                kp = args.weight_decay_kp,
+                ki = args.weight_decay_ki,
+                kd = args.weight_decay_kd,
+                setpoint = args.weight_decay_setpoint)
 
             
 
