@@ -132,7 +132,7 @@ def get_default_args():
 
     # Scheduler
     parser.add_argument("--scheduler", type=str, default="", help="Factor for the steplr plateu scheduler")
-    parser.add_argument("--scheduler_patience", type=int, default=30,help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--scheduler_patience", type=int, default=50,help="Patience for the ReduceLROnPlateau scheduler")
     parser.add_argument("--scheduler_factor", type=float, default=0.99, help="Factor for the ReduceLROnPlateau scheduler")
 
     parser.add_argument("--weight_decay_dynamic", type=int, default=0,help="Patience for the ReduceLROnPlateau scheduler")
