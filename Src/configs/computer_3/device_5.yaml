@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [spoter_new+dimforward+aug fold-5-seed-95-p100]
+    values: [Good+NoAug fold-5-seed-95-rtx6000]
   training_set_path:
     values: [
     "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5",
@@ -27,15 +27,15 @@ parameters:
   num_layers_2:
     values: [2] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
   dim_feedforward_encoder:
-    values: [512]
+    values: [256]
   dim_feedforward_decoder:
-    values: [2048,1024,512] #
+    values: [1024,1280,2048,512] #
   device:
     values: [1]
   augmentation:
     values: [1]
   factor_aug:
-    values: [3]
+    values: [2]
   batch_name:
     values: [mean_1]
   batch_size:
@@ -45,7 +45,7 @@ parameters:
   label_smoothing:
     values: [0.1]
   early_stopping_patience:
-    values: [500]
+    values: [300]
   epochs:
     values: [10000]
   scheduler:
