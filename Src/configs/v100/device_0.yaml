@@ -2,20 +2,20 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [testing+spoter_new+dimforward fold-5-seed-1-rtx6000]
+    values: [Good+NoAug fold-5-seed-95-rtx6000]
   training_set_path:
     values: [
-    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_1_klod_1-Train.hdf5",
-    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_1_klod_2-Train.hdf5",
-    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_1_klod_3-Train.hdf5",
-    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_1_klod_4-Train.hdf5",
-    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_1_klod_5-Train.hdf5"]
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5",
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_2-Train.hdf5",
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_3-Train.hdf5",
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_4-Train.hdf5",
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_5-Train.hdf5"]
   validation_set_path:
     values: [""]
   data_fold:
     values: [5]
   data_seed:
-    values: [1]
+    values: [95]
   sweep:
     values: [1]
   lr:
@@ -27,13 +27,13 @@ parameters:
   num_layers_2:
     values: [2] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
   dim_feedforward_encoder:
-    values: [64]
+    values: [128]
   dim_feedforward_decoder:
-    values: [256,128,64] #
+    values: [512,1024,1280,256] #
   device:
     values: [0]
   augmentation:
-    values: [1]
+    values: [0]
   factor_aug:
     values: [2]
   batch_name:
@@ -45,7 +45,7 @@ parameters:
   label_smoothing:
     values: [0.1]
   early_stopping_patience:
-    values: [500]
+    values: [300]
   epochs:
     values: [10000]
   scheduler:
@@ -55,7 +55,7 @@ parameters:
   weight_decay:
     values: [0.0001]
   weight_decay_dynamic:
-    values: [1]
+    values: [0]
   dropout:
     values: [0.3]
   gaussian_std:
