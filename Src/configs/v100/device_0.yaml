@@ -1,0 +1,70 @@
+program: train.py
+method: grid
+parameters:
+  experiment_name:
+    values: [testing+spoter_new+dimforward fold-5-seed-1-rtx6000]
+  training_set_path:
+    values: [
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_1_klod_1-Train.hdf5",
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_1_klod_2-Train.hdf5",
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_1_klod_3-Train.hdf5",
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_1_klod_4-Train.hdf5",
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_1_klod_5-Train.hdf5"]
+  validation_set_path:
+    values: [""]
+  data_fold:
+    values: [5]
+  data_seed:
+    values: [1]
+  sweep:
+    values: [1]
+  lr:
+    values: [0.0001] #0.001, 0.00001,
+  num_heads:
+    values: [2] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
+  num_layers_1:
+    values: [3] # [64,12,8,6,4,2,1]
+  num_layers_2:
+    values: [2] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
+  dim_feedforward_encoder:
+    values: [64]
+  dim_feedforward_decoder:
+    values: [256,128,64] #
+  device:
+    values: [0]
+  augmentation:
+    values: [1]
+  factor_aug:
+    values: [2]
+  batch_name:
+    values: [mean_1]
+  batch_size:
+    values: [64]
+  loss_weighted_factor:
+    values: [2]
+  label_smoothing:
+    values: [0.1]
+  early_stopping_patience:
+    values: [500]
+  epochs:
+    values: [10000]
+  scheduler:
+    values: ["plateu"]
+  optimizer:
+    values: ['adam']
+  weight_decay:
+    values: [0.0001]
+  weight_decay_dynamic:
+    values: [1]
+  dropout:
+    values: [0.3]
+  gaussian_std:
+    values: [0.001]
+  use_wandb:
+    values: [1]
+  hidden_dim:
+    values : [108] # obligado 108 por tener 54*2 puntos
+
+#python train.py --device=0 --dim_feedforward=128 --lr=0.0001 --num_heads=54 --num_layers_1=32 --num_layers_2=256 --sweep=1 --augmentation=1
+
+#python train.py --augmentation=0 --batch_name=mean_1 --batch_size=64 --data_fold=5 --data_seed=1 --device=0 --dim_feedforward=8 --dropout=0.3 --early_stopping_patience=500 --epochs=1000 "--experiment_name=original +aug fold-5-seed-123-p100" --factor_aug=2 --gaussian_std=0.001 --label_smoothing=0.1 --loss_weighted_factor=2 --lr=0.0001 --num_heads=3 --num_layers_1=3 --num_layers_2=2 --optimizer=adam --scheduler=plateu --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_123_klod_1-Train.hdf5 --use_wandb=0 --validation_set_path= --weight_decay=0.0001 --weight_decay_dynamic=1 --hidden_dim=108

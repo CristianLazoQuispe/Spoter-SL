@@ -1,5 +1,6 @@
 
 import os
+import json
 import argparse
 import random
 import logging
@@ -11,18 +12,57 @@ import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+from sklearn.metrics import roc_auc_score
+from sklearn.preprocessing import label_binarize
 from torchvision import transforms
-from torch.utils.data import DataLoader
 from pathlib import Path
 
 from Src.datasets.utils_split import __balance_val_split, __split_of_train_sequence, __log_class_statistics
-from Src.datasets.Lsp_dataset import LSP_Dataset
+
+from Src.datasets.SpoterDataset import SpoterDataset
+from Src.datasets.SpoterDataLoader import SpoterDataLoader
+
+from Src.datasets.drawing import drawing
+
 from Src.spoter.spoter_model import SPOTER
 from Src.spoter.utils import train_epoch, evaluate, generate_csv_result, generate_csv_accuracy
 from Src.spoter.gaussian_noise import GaussianNoise
 from Src.spoter.gpu import configurar_cuda_visible
+from Src.spoter.optimizer import dynamic_weight_decay
 import wandb
 from torch.nn.utils.rnn import pad_sequence
+from sklearn.metrics import f1_score
+import time
+
+from Src.spoter import save_artifact
+import atexit
+
+import gc
+
+run = None
+model_save_folder_path = None
+top_val_f1_weighted = 0
+top_val_f1_weighted_before = 0
+
+def finish_process():
+    global run,model_save_folder_path
+    global top_val_f1_weighted,top_val_f1_weighted_before
+    """
+    function to finish wandb if there is an error in the code or force stop
+    """
+    print("Finishing process")
+    if top_val_f1_weighted!= top_val_f1_weighted_before:
+        print("Sending artifact to wandb!")
+        artifact = wandb.Artifact(f'best-model_{run.id}.pth', type='model')
+        artifact.add_file(model_save_folder_path + "/checkpoint_best_model.pth")
+        run.log_artifact(artifact)
+    print("Closing wandb.. ")
+    wandb.finish()
+    print("Wandb closed")
+    print("Cleaning memory.. ")
+    gc.collect()
+    torch.cuda.empty_cache()
+    print("Memory cleaned")
 
 # Modifica el collate_fn para rellenar secuencias
 def custom_collate_fn(batch):
@@ -33,14 +73,14 @@ def custom_collate_fn(batch):
 
 
 
-PROJECT_WANDB = "SLR_2023"#Spoter-as-orignal"
-ENTITY = "ml_projects" #c-vasquezr
 
 from dotenv import load_dotenv
 import os
 load_dotenv()
 
 os.environ["WANDB_API_KEY"] =  os.getenv("WANDB_API_KEY")
+PROJECT_WANDB =  os.getenv("PROJECT_WANDB")
+ENTITY        =  os.getenv("ENTITY")
 
 def get_default_args():
     parser = argparse.ArgumentParser(add_help=False)
@@ -80,7 +120,8 @@ def get_default_args():
     parser.add_argument("--num_heads", type=int, default=9, help="")
     parser.add_argument("--num_layers_1", type=int, default=6, help="")
     parser.add_argument("--num_layers_2", type=int, default=6, help="")
-    parser.add_argument("--dim_feedforward", type=int, default=256, help="")
+    parser.add_argument("--dim_feedforward_encoder", type=int, default=64, help="")
+    parser.add_argument("--dim_feedforward_decoder", type=int, default=256, help="")
 
     parser.add_argument("--early_stopping_patience", type=int, default=200, help="")
     parser.add_argument("--max_acc_difference", type=float, default=0.35, help="")
@@ -90,13 +131,22 @@ def get_default_args():
                         help="Determines whether to save weights checkpoints")
 
     # Scheduler
-    parser.add_argument("--scheduler_factor", type=int, default=0.1, help="Factor for the ReduceLROnPlateau scheduler")
-    parser.add_argument("--scheduler_patience", type=int, default=5,
-                        help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--scheduler", type=str, default="", help="Factor for the steplr plateu scheduler")
+    parser.add_argument("--scheduler_patience", type=int, default=30,help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--scheduler_factor", type=float, default=0.99, help="Factor for the ReduceLROnPlateau scheduler")
+
+    parser.add_argument("--weight_decay_dynamic", type=int, default=0,help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--weight_decay_patience", type=int, default=1,help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--weight_decay_max", type=float, default=0.05,help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--weight_decay_min", type=float, default=0.000005,help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--weight_decay_kp", type=float, default=0.0001,help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--weight_decay_ki", type=float, default=0.0,help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--weight_decay_kd", type=float, default=0.0,help="Patience for the ReduceLROnPlateau scheduler")
+    parser.add_argument("--weight_decay_setpoint", type=float, default=0.5,help="Patience for the ReduceLROnPlateau scheduler")
 
     # Gaussian noise normalization
-    parser.add_argument("--gaussian_mean", type=int, default=0, help="Mean parameter for Gaussian noise layer")
-    parser.add_argument("--gaussian_std", type=int, default=0.00001,
+    parser.add_argument("--gaussian_mean", type=float, default=0.0, help="Mean parameter for Gaussian noise layer")
+    parser.add_argument("--gaussian_std", type=float, default=0.001,
                         help="Standard deviation parameter for Gaussian noise layer")
 
     # Visualization
@@ -110,8 +160,30 @@ def get_default_args():
     # To continue training the data
     parser.add_argument("--continue_training", type=str, default="",help="path to retrieve the model for continue training")
     parser.add_argument("--transfer_learning", type=str, default="",help="path to retrieve the model for transfer learning")
-
-
+    parser.add_argument("--augmentation", type=int, default=0,
+                        help="Augmentations")
+    parser.add_argument("--factor_aug", type=int, default=2,
+                        help="factor para multiplicar los datos de augmentation")
+    parser.add_argument("--batch_name", type=str, default="",
+                        help=" | mean_1:calcula backward en cada batch | mean_2: calcula backward en cada instancia")    
+    parser.add_argument("--batch_size", type=int, default=32,help="batch_size ")
+    parser.add_argument("--num_workers", type=int, default=16,help="num_workers ")
+                        
+    parser.add_argument("--loss_weighted_factor", type=int, default=1,
+                        help="Loss crossentropy weighted ")
+    parser.add_argument("--label_smoothing", type=float, default=0,
+                        help="Loss crossentropy weighted ")
+    parser.add_argument("--optimizer", type=str, default='sgd',
+                        help="Loss crossentropy weighted ")
+    parser.add_argument("--weight_decay", type=float, default=1e-3,
+                        help="Loss crossentropy weighted ")
+    parser.add_argument("--dropout", type=float, default=0.1,
+                        help="dropout weighted ")                                                
+    parser.add_argument("--data_fold", type=int, default=5,help="")
+    parser.add_argument("--data_seed", type=int, default=42,help="")
+                                                
+    parser.add_argument("--use_wandb", type=int, default=1,help="")
+                           
 
 
     return parser
@@ -143,8 +215,23 @@ def get_df_stats(data_set,stats,num_classes):
     return df_stats
 
 def train(args):
+    global run,model_save_folder_path
+    global top_val_f1_weighted,top_val_f1_weighted_before
 
-    # MARK: TRAINING PREPARATION AND MODULES
+
+    if args.validation_set == "from-file":
+        if args.validation_set_path == "":
+            args.validation_set_path = args.training_set_path.replace("Train","Val")
+
+
+    if args.use_wandb:
+        # MARK: TRAINING PREPARATION AND MODULES
+        run = wandb.init(project=PROJECT_WANDB, 
+                        entity=ENTITY,
+                        config=args, 
+                        name=args.experiment_name, 
+                        job_type="model-training",
+                        tags=["paper"])
 
     # Initialize all the random seeds
     random.seed(args.seed)
@@ -178,31 +265,36 @@ def train(args):
         device = torch.device("cuda")
 
     
+    drawer = drawing(w = 256,h = 256,path_points= 'Data/points_54.csv')
 
     # DATA LOADER
         # Training set
     transform = transforms.Compose([GaussianNoise(args.gaussian_mean, args.gaussian_std)])
-    train_set = LSP_Dataset(args.training_set_path, transform=transform, have_aumentation=True, keypoints_model='mediapipe')
+    
+    if args.augmentation:
+        train_set = SpoterDataset(args.training_set_path, transform=transform, has_augmentation=True,keypoints_model='mediapipe',factor=args.factor_aug)
+    else:
+        train_set = SpoterDataset(args.training_set_path, transform=transform, has_augmentation=False,keypoints_model='mediapipe',factor=args.factor_aug)
 
     # Validation set
     if args.validation_set == "from-file":
-        val_set = LSP_Dataset(args.validation_set_path, keypoints_model='mediapipe', have_aumentation=False)
-        val_loader = DataLoader(val_set, shuffle=True, generator=g)
+        print("NO AUGMENTATION UN VALIDATION")
+        val_set    = SpoterDataset(args.validation_set_path, has_augmentation=False,keypoints_model='mediapipe')
+        val_loader = SpoterDataLoader(val_set, shuffle=True, generator=g, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
 
     elif args.validation_set == "split-from-train":
         train_set, val_set = __balance_val_split(train_set, 0.2)
 
         val_set.transform = None
         val_set.augmentations = False
-        val_loader = DataLoader(val_set, shuffle=True, generator=g)
+        val_loader = SpoterDataLoader(val_set, shuffle=True, generator=g, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
     else:
         val_loader = None
 
     # Testing set
     if args.testing_set_path:
-        eval_set = LSP_Dataset(args.testing_set_path, keypoints_model='mediapipe')
-        eval_loader = DataLoader(eval_set, shuffle=True, generator=g)
-
+        eval_set = SpoterDataset(args.testing_set_path, has_augmentation=False,keypoints_model='mediapipe')
+        eval_loader = SpoterDataLoader(eval_set, shuffle=True, generator=g, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
     else:
         eval_loader = None
 
@@ -210,10 +302,8 @@ def train(args):
     if args.experimental_train_split:
         train_set = __split_of_train_sequence(train_set, args.experimental_train_split)
 
-    train_loader = DataLoader(train_set, shuffle=True, generator=g)
-    # Crea un nuevo DataLoader con el collate_fn personalizado
-    #train_loader = DataLoader(train_set, shuffle=True, generator=g, collate_fn=custom_collate_fn, batch_size=64)
 
+    train_loader = SpoterDataLoader(train_set, shuffle=True, generator=g, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
 
     # RETRIEVE TRAINING
     if args.continue_training:
@@ -221,10 +311,14 @@ def train(args):
         slrt_model = SPOTER(num_classes=args.num_classes, num_rows=args.num_rows,
                             hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
                             num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
-                            dim_feedforward=args.dim_feedforward)
+                            dim_feedforward_encoder=args.dim_feedforward_encoder,
+                            dim_feedforward_decoder=args.dim_feedforward_decoder)
+
         checkpoint = torch.load(args.continue_training)
         slrt_model.load_state_dict(checkpoint['model_state_dict'])
+
         sgd_optimizer = optim.SGD(slrt_model.parameters(), lr=args.lr)
+
         sgd_optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         epoch_start = checkpoint['epoch']
 
@@ -251,33 +345,51 @@ def train(args):
 
     # Normal scenario
     else:
+
         slrt_model = SPOTER(num_classes=args.num_classes, num_rows=args.num_rows,
                             hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
                             num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
-                            dim_feedforward=args.dim_feedforward)
-        
-        sgd_optimizer = optim.SGD(slrt_model.parameters(), lr=args.lr)
+                            dim_feedforward_encoder=args.dim_feedforward_encoder,
+                            dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout)
+        if args.optimizer == 'adam':
+            #sgd_optimizer = optim.Adam(slrt_model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+            sgd_optimizer = optim.AdamW(slrt_model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+
+        else:
+            sgd_optimizer = optim.SGD(slrt_model.parameters(), lr=args.lr)
+
     # Construct the model
         
 
     # Construct the other modules
     
-    # CLASS WEIGHT
-    #class_weight = torch.FloatTensor([1/train_set.label_freq[i] for i in range(args.num_classes)]).to(device)
-    
-    # LABEL SMOOTHING IN CRITERION
-    cel_criterion = nn.CrossEntropyLoss(label_smoothing=0.1)#, weight=class_weight)
-    #cel_criterion = nn.CrossEntropyLoss()
-    
+
     
     epoch_start = 0
 
-    #scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, factor=args.scheduler_factor, patience=args.scheduler_patience)
-    #scheduler = optim.lr_scheduler.LambdaLR(sgd_optimizer, lr_lambda=lr_lambda)
+    lr_scheduler = None
+
+    if args.scheduler == 'steplr':
+        lr_scheduler = optim.lr_scheduler.StepLR(sgd_optimizer, step_size=1, gamma=0.9995)
+    if args.scheduler == 'plateu':
+        lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='max', factor=args.scheduler_factor, patience=args.scheduler_patience, verbose=False,threshold=0.0001, threshold_mode='rel',cooldown=0, min_lr=0.00001, eps=1e-08)
+        #lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='max', factor=0.1, patience=5, verbose=True)
+
+        if args.weight_decay_dynamic:
+            wd_scheduler = dynamic_weight_decay(weight_decay_patience = args.weight_decay_patience,
+                weight_decay_max = args.weight_decay_max,
+                weight_decay_min = args.weight_decay_min,
+                kp = args.weight_decay_kp,
+                ki = args.weight_decay_ki,
+                kd = args.weight_decay_kd,
+                setpoint = args.weight_decay_setpoint)
+
+            
 
     # Ensure that the path for checkpointing and for images both exist
     Path("Results/").mkdir(parents=True, exist_ok=True)
     Path("Results/checkpoints/" + args.experiment_name + "/").mkdir(parents=True, exist_ok=True)
+    Path("Results/checkpoints/" + args.experiment_name + "/"+args.training_set_path.split("/")[-1]+"/").mkdir(parents=True, exist_ok=True)
     Path("Results/images/metrics/").mkdir(parents=True, exist_ok=True)
     Path("Results/images/histograms/").mkdir(parents=True, exist_ok=True)
     Path("Results/images/keypoints/").mkdir(parents=True, exist_ok=True)
@@ -300,30 +412,26 @@ def train(args):
     print("#"*30)
     print("#"*50)
 
-    run = wandb.init(project=PROJECT_WANDB, 
-                     entity=ENTITY,
-                     config=args, 
-                     name=args.experiment_name, 
-                     job_type="model-training",
-                     tags=["paper"])
 
+    if args.use_wandb:
+        # Log the parameters to wandb
+        wandb.config.update({
+            "total_parameters": total_params,
+            "trainable_parameters": trainable_params,
+            "trainable_parameters_ratio": ratio
+        })
 
-    # Log the parameters to wandb
-    wandb.config.update({
-        "total_parameters": total_params,
-        "trainable_parameters": trainable_params,
-        "trainable_parameters_ratio": ratio
-    })
+        config = wandb.config
+        wandb.watch_called = False
 
-    config = wandb.config
-    wandb.watch_called = False
-    
     
     # MARK: TRAINING
     train_acc, val_acc = 0, 0
     losses, train_accs, val_accs, val_accs_top5 = [], [], [], []
     lr_progress = []
     top_train_acc, top_val_acc = 0, 0
+    top_val_f1_weighted = 0
+    top_val_f1_weighted_before = 0
     checkpoint_index = 0
 
     if args.experimental_train_split:
@@ -343,28 +451,76 @@ def train(args):
     epochs_without_improvement = 0
 
 
+    print("*"*50)
+    print("args.augmentation:",args.augmentation)
+    if args.augmentation:
+        print("AUGMENTATION IS USED")
+
+    
+    # LABEL SMOOTHING IN CRITERION
+    if args.loss_weighted_factor!=0:
+        # CLASS WEIGHT
+        print("train_set.factors",train_set.factors)
+        factors = [train_set.factors[i]**args.loss_weighted_factor for i in range(args.num_classes)]
+        min_factor = min(factors)
+        factors = [value/min_factor for value in factors]
+
+        name_factors = {train_set.inv_dict_labels_dataset[i]:value for i, value in enumerate(factors)}
+        print("name_factors:")
+        print(json.dumps(name_factors, indent=4))
+        class_weight = torch.FloatTensor(factors).to(device)
+        print("\\\\\\"*20)
+        print("class_weight:",class_weight)
+        cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing, weight=class_weight)
+    else:
+        cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)#, weight=class_weight)
+    #cel_criterion = nn.CrossEntropyLoss()
+    
+    previous_val_loss = 0
+    previous_val_acc  = 0 
+
+    print("training_set_path   :",args.training_set_path)
+    print("validation_set_path :",args.validation_set_path)
+
+
     for epoch in range(epoch_start, args.epochs):
 
         #sgd_optimizer = lr_lambda(epoch, sgd_optimizer)
+        start_time = time.time()
 
-        train_loss, _, _, train_acc,train_stats = train_epoch(slrt_model, train_loader, cel_criterion, sgd_optimizer, device,epoch=epoch)
-        losses.append(train_loss.item())
+        current_lr = sgd_optimizer.param_groups[0]["lr"]
+
+        train_loss,train_stats,train_labels_original,train_labels_predicted,list_depth_map_train,list_label_name_train = train_epoch(slrt_model, train_loader, 
+        cel_criterion, sgd_optimizer,device,epoch=epoch,args=args)
+        
+        train_acc   = f1_score(train_labels_original, train_labels_predicted, average='micro',zero_division=0)
+
+        losses.append(train_loss)
         train_accs.append(train_acc)
+        # Obtener la tasa de aprendizaje actual
+
 
         if val_loader:
             slrt_model.train(False)
-            val_loss, _, _, val_acc, val_acc_top5, val_stats = evaluate(slrt_model, val_loader, cel_criterion, device,epoch=epoch)
+            val_loss, val_acc_top5, val_stats,val_labels_original,val_labels_predicted,list_depth_map_val,list_label_name_val = evaluate(slrt_model, val_loader, cel_criterion, device,epoch=epoch,args=args)
             slrt_model.train(True)
+
+            val_acc           = f1_score(val_labels_original, val_labels_predicted, average='micro',zero_division=0)
+            train_f1_weighted = f1_score(train_labels_original, train_labels_predicted, average='weighted',zero_division=0)
+            val_f1_weighted   = f1_score(val_labels_original, val_labels_predicted, average='weighted',zero_division=0)
+
+
             val_accs.append(val_acc)
             val_accs_top5.append(val_acc_top5)
 
-            if val_acc > best_val_max_acc:
-                best_val_max_acc = val_acc
+            # GUARDANDO EL MEJOR MODELO
+            if val_f1_weighted > best_val_max_acc:
+                best_val_max_acc = val_f1_weighted
                 epochs_without_improvement = 0
             else:
                 epochs_without_improvement += 1
             # Check for early stopping based on the difference between training and validation loss
-            acc_difference = np.abs(train_acc - best_val_max_acc)
+            acc_difference = np.abs(train_f1_weighted - val_f1_weighted)
 
             if acc_difference > args.max_acc_difference:
                 epochs_distance_without_improvement+=1
@@ -382,23 +538,53 @@ def train(args):
             
         df_train_stats = get_df_stats(train_set,train_stats,args.num_classes).add_prefix('train_')
         df_val_stats   = get_df_stats(val_set,val_stats,args.num_classes).add_prefix('val_')
+
         df_merged = pd.merge(df_train_stats, df_val_stats, how='inner', left_on='train_gloss', right_on='val_gloss')
         # Puedes eliminar la columna redundante después de la fusión
         df_merged.drop('val_gloss', axis=1, inplace=True)
         # Renombra las columnas para que solo quede el nombre "gloss"
         df_merged.rename(columns={'train_gloss': 'gloss'}, inplace=True)
 
+        
+
+        total_time = time.time()-start_time
+
+
+                
+        if val_loss is not None:
+            previous_val_loss = val_loss
+        if val_acc is not None:
+            previous_val_acc = val_acc
         if val_loader:
             log_values = {
+                'current_lr':current_lr,
+                'current_weight_decay':sgd_optimizer.param_groups[0]['weight_decay'],
                 'train_acc': train_acc,
                 'train_loss': train_loss,
-                'val_acc': val_acc,
-                'val_loss':val_loss,
+                'val_acc': previous_val_acc,
+                'val_loss':previous_val_loss,
                 'val_best_acc': top_val_acc,
                 'val_top5_acc': val_acc_top5,
-                'epoch': epoch
+                'epoch': epoch,
+                'train_f1_weighted':train_f1_weighted,
+                'val_f1_weighted':val_f1_weighted,
+                'total_time':total_time
             }
 
+        if args.scheduler == 'steplr':
+            lr_scheduler.step()
+
+        if args.scheduler == 'plateu' and val_acc>0:
+            if val_loss is not None:
+                lr_scheduler.step(val_acc)
+                # Actualizar weight decay
+                if args.weight_decay_dynamic:
+                    weight_decay = sgd_optimizer.param_groups[0]['weight_decay']
+                    weight_decay = wd_scheduler.step(train_loss, val_loss, weight_decay)
+                    sgd_optimizer.param_groups[0]['weight_decay'] = weight_decay
+
+
+        """
         if val_loader:
             for _, row in df_train_stats.iterrows():
                 gloss_name = row['train_gloss']
@@ -408,55 +594,102 @@ def train(args):
                 gloss_name = row['val_gloss']
                 accuracy_metric_name = f'val_acc_{gloss_name}'
                 log_values[accuracy_metric_name] = row['val_gloss_acc']
+        """
 
 
-
-        if val_loader:
-            log_values['Train_table_stats']  = wandb.Table(dataframe=df_train_stats)
-            log_values['Val_table_stats'] =  wandb.Table(dataframe=df_val_stats)
-            log_values['Compare_table_stats'] =  wandb.Table(dataframe=df_merged)
-            wandb.log(log_values)
             
         # Save checkpoints if they are best in the current subset
         if args.save_checkpoints:
-            if val_acc > top_val_acc:
-                top_val_acc = val_acc
-                model_save_folder_path = "Results/checkpoints/" + args.experiment_name
-
+            model_save_folder_path = os.path.join("Results/checkpoints/" + args.experiment_name,args.training_set_path.split("/")[-1])
+            if args.use_wandb:
                 torch.save({
                     'epoch': epoch,
                     'model_state_dict': slrt_model.state_dict(),
                     'optimizer_state_dict': sgd_optimizer.state_dict(),
-                    'loss': train_loss
-                }, model_save_folder_path + "/checkpoint_best_model.pth")
-                
-                generate_csv_result(run, slrt_model, val_loader, model_save_folder_path, val_set.inv_dict_labels_dataset, device)
-                generate_csv_accuracy(df_train_stats, model_save_folder_path,name='/train_accuracy.csv')
-                generate_csv_accuracy(df_val_stats, model_save_folder_path,name='/evaluate_accuracy.csv')
-                
-                artifact = wandb.Artifact(f'best-model_{run.id}.pth', type='model')
-                artifact.add_file(model_save_folder_path + "/checkpoint_best_model.pth")
-                run.log_artifact(artifact)
-                wandb.save(model_save_folder_path + "/checkpoint_best_model.pth")
+                    'loss': train_loss,
 
+                    "lr": lr_scheduler.state_dict(),
+
+                    "wandb": save_artifact.WandBID(wandb.run.id).state_dict(),
+                    "epoch": save_artifact.Epoch(epoch).state_dict(),
+                    "metric_val_acc": save_artifact.Metric(previous_val_acc).state_dict()
+                }, model_save_folder_path + "/checkpoint_model.pth")
+            else:
+                torch.save({
+                    'epoch': epoch,
+                    'model_state_dict': slrt_model.state_dict(),
+                    'optimizer_state_dict': sgd_optimizer.state_dict(),
+                    'loss': train_loss,
+
+                    "lr": lr_scheduler.state_dict(),
+
+                }, model_save_folder_path + "/checkpoint_model.pth")
+
+            if val_acc > top_val_acc:
+                top_val_acc = val_acc
+
+            if val_f1_weighted > top_val_f1_weighted:
+                top_val_f1_weighted = val_f1_weighted
+
+                if args.use_wandb:
+                    torch.save({
+                        'epoch': epoch,
+                        'model_state_dict': slrt_model.state_dict(),
+                        'optimizer_state_dict': sgd_optimizer.state_dict(),
+                        'loss': train_loss,
+
+                        "lr": lr_scheduler.state_dict(),
+
+                        "wandb": save_artifact.WandBID(wandb.run.id).state_dict(),
+                        "epoch": save_artifact.Epoch(epoch).state_dict(),
+                        "metric_val_acc": save_artifact.Metric(top_val_acc).state_dict()
+
+                    }, model_save_folder_path + "/checkpoint_best_model.pth")
+                else:
+                    torch.save({
+                        'epoch': epoch,
+                        'model_state_dict': slrt_model.state_dict(),
+                        'optimizer_state_dict': sgd_optimizer.state_dict(),
+                        'loss': train_loss,
+
+                        "lr": lr_scheduler.state_dict(),
+
+                    }, model_save_folder_path + "/checkpoint_best_model.pth")
+                
                 checkpoint_index += 1
 
+        if epoch%100 == 0:
 
-        if epoch % args.log_freq == 0:
-            print("[" + str(epoch + 1) + "] TRAIN  loss: " + str(train_loss.item()) + " acc: " + str(train_acc))
-            logging.info("[" + str(epoch + 1) + "] TRAIN  loss: " + str(train_loss.item()) + " acc: " + str(train_acc))
 
-            if val_loader:
-                print("[" + str(epoch + 1) + "] VALIDATION  loss: " + str(val_loss.item()) + "acc: " + str(val_acc) + " top-5(acc): " + str(val_acc_top5))
-                logging.info("[" + str(epoch + 1) + "] VALIDATION  loss: " + str(val_loss.item()) + "acc: " + str(val_acc) + " top-5(acc): " + str(val_acc_top5))
+            list_images_train,filename_train = drawer.get_video_frames_25_glosses_batch(list_depth_map_train,list_label_name_train,suffix='train',save_gif=True)
+            print("sending gif")
+            #wandb.log({"train_video": wandb.Video(filename_train, fps=1, format="mp4")})
 
-            print("")
-            logging.info("")
+            list_images_val,filename_val   = drawer.get_video_frames_25_glosses_batch(list_depth_map_val,list_label_name_val,suffix='val',save_gif=True)
+            print("sending gif")
 
-        # Reset the top accuracies on static subsets
-        #if epoch % 10 == 0:
-        #    top_train_acc, top_val_acc, val_acc_top5 = 0, 0, 0
-        #    checkpoint_index += 1
+
+            if args.use_wandb:
+                if val_loader:
+                    #log_values['Train_table_stats']   =  wandb.Table(dataframe=df_train_stats)
+                    #log_values['Val_table_stats']     =  wandb.Table(dataframe=df_val_stats)
+                    log_values['Compare_table_stats'] =  wandb.Table(dataframe=df_merged)
+                    #wandb.log({"val_video": wandb.Video(filename_val, fps=1,format="mp4")})
+                    wandb.log({"gloss_train_video": wandb.Video(filename_train, format="gif")})
+                    wandb.log({"gloss_val_video": wandb.Video(filename_val, format="gif")})
+
+
+            if top_val_f1_weighted!= top_val_f1_weighted_before:
+                top_val_f1_weighted_before = top_val_f1_weighted
+                if args.use_wandb:
+                    print("Sending artifact to wandb!")
+                    artifact = wandb.Artifact(f'best-model_{run.id}.pth', type='model')
+                    artifact.add_file(model_save_folder_path + "/checkpoint_best_model.pth")
+                    run.log_artifact(artifact)
+
+        if val_loader:
+            if args.use_wandb:
+                wandb.log(log_values)
 
         lr_progress.append(sgd_optimizer.param_groups[0]["lr"])
 
@@ -466,25 +699,6 @@ def train(args):
     logging.info("\nTesting checkpointed models starting...\n")
 
     top_result, top_result_name = 0, ""
-
-    if eval_loader:
-        for i in range(checkpoint_index):
-            for checkpoint_id in ["v"]: #["t", "v"]:
-                # tested_model = VisionTransformer(dim=2, mlp_dim=108, num_classes=100, depth=12, heads=8)
-                tested_model = torch.load("Results/checkpoints/" + args.experiment_name + "/checkpoint_" + checkpoint_id + "_" + str(i) + ".pth")
-                tested_model.train(False)
-                _, _, eval_acc = evaluate(tested_model, eval_loader, device, print_stats=True)
-
-                if eval_acc > top_result:
-                    top_result = eval_acc
-                    top_result_name = args.experiment_name + "/checkpoint_" + checkpoint_id + "_" + str(i)
-
-                print("checkpoint_" + checkpoint_id + "_" + str(i) + "  ->  " + str(eval_acc))
-                logging.info("checkpoint_" + checkpoint_id + "_" + str(i) + "  ->  " + str(eval_acc))
-
-        print("\nThe top result was recorded at " + str(top_result) + " testing accuracy. The best checkpoint is " + top_result_name + ".")
-        logging.info("\nThe top result was recorded at " + str(top_result) + " testing accuracy. The best checkpoint is " + top_result_name + ".")
-
 
     # PLOT 0: Performance (loss, accuracies) chart plotting
     if args.plot_stats:
@@ -517,6 +731,8 @@ def train(args):
 
 
 if __name__ == '__main__':
+    
+    atexit.register(finish_process)
     parser = argparse.ArgumentParser("", parents=[get_default_args()], add_help=False)
     args = parser.parse_args()
     

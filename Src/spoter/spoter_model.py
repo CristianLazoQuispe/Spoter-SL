@@ -43,52 +43,41 @@ class SPOTER(nn.Module):
     of skeletal data.
     """
 
-    def __init__(self, num_classes, num_rows=64,hidden_dim=108, num_heads=9, num_layers_1=6, num_layers_2=6, dim_feedforward=256):
+    def __init__(self, num_classes, num_rows=64,hidden_dim=108, num_heads=9, num_layers_1=6, num_layers_2=6, 
+                            dim_feedforward_encoder=64,
+                            dim_feedforward_decoder=256,dropout=0.3):
         super().__init__()
 
-        self.row_embed_aux = nn.Parameter(torch.rand(num_rows, hidden_dim))
-        
-        self.pos = nn.Parameter(torch.cat([self.row_embed_aux[0].unsqueeze(0).repeat(1, 1, 1)], dim=-1).flatten(0, 1).unsqueeze(0))
+        self.hidden_dim  = hidden_dim
+        self.pos         = nn.Parameter(torch.rand(1,1, hidden_dim))
         self.class_query = nn.Parameter(torch.rand(1, hidden_dim))
-        self.transformer = nn.Transformer(hidden_dim, num_heads, num_layers_1, num_layers_2)
+        print("self.pos",self.pos)
+        print("self.pos",self.pos.shape)
+        #https://pytorch.org/docs/stable/generated/torch.nn.Transformer.html
+        self.transformer  = nn.Transformer(d_model=hidden_dim, nhead =num_heads,
+        num_encoder_layers= num_layers_1, 
+        num_decoder_layers= num_layers_2,
+        dim_feedforward = dim_feedforward_encoder,
+        dropout=dropout)
         self.linear_class = nn.Linear(hidden_dim, num_classes)
 
         custom_decoder_layer = SPOTERTransformerDecoderLayer(self.transformer.d_model, self.transformer.nhead,
-                                                             dim_feedforward, 0.1, "relu")
-        
-        print("=="*30)
-        print("=="*30)
-        print("=="*30)
-        print("self.row_embed_aux[0]=",self.row_embed_aux[0])
-        print("hidden_dim = ",hidden_dim)
-        print("pos = ",self.pos.shape)
-        print("self.transformer.decoder.num_layers=",self.transformer.decoder.num_layers)
-        print("=="*30)
-        print("=="*30)
+                                                             dim_feedforward_decoder, dropout=dropout, activation="relu")
+
+        self.dropout1 = nn.Dropout(dropout)
+        self.act_relu = nn.ReLU()
         self.transformer.decoder.layers = _get_clones(custom_decoder_layer, self.transformer.decoder.num_layers)
-
-
-    """
-    def forward(self, inputs):
-        h = torch.unsqueeze(inputs.flatten(start_dim=1), 1).float()
-        h = self.transformer(self.pos + h, self.class_query.unsqueeze(0)).transpose(0, 1)
-        res = self.linear_class(h)
-
-        return res
-    """
+        
+        for param in self.transformer.decoder.layers[:3].parameters():
+            param.requires_grad = False # Congelar capas
+            
     def forward(self, inputs,show=False):
-        print("++"*30) if show else None
-        print("++"*30) if show else None
-        print(f"inputs shape: {inputs.shape}") if show else None
         h = torch.unsqueeze(inputs.flatten(start_dim=1), 1).float()
-        print(f"h      shape: {h.shape}") if show else None
-        print(f"pos    shape: {self.pos.shape}") if show else None
         aux = self.pos + h
-        print(f"aux    shape: {aux.shape}") if show else None
         h = self.transformer(aux, self.class_query.unsqueeze(0)).transpose(0, 1)
-        print(f"h      shape: {h.shape}") if show else None
+        h = self.act_relu(h)
+        h = self.dropout1(h)
         res = self.linear_class(h)
-        print(f"res    shape: {res.shape}") if show else None
         return res
 
 

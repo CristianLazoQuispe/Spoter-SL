@@ -44,3 +44,18 @@ You can also kill a particular session using the following command:
 
     watch -n 1 nvidia-smi
 
+    sudo pip install gpustat
+    watch -n 0.5 -c gpustat -cp --color
+
+
+Entrenamiento sin augmentation
+
+Train Epoch 1:  19%|██████████████▌                                                            | 144/744 [02:16<09:12,  1.09it/s]
+
+Train Epoch 1:   8%|█████▊                                                                      | 57/744 [02:11<24:23,  2.13s/it]
+
+
+Entrenamiento con augmentation temrinal normla
+Train Epoch 1: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 744/744 [23:24<00:00,  1.89s/it]
+Evaludate Epoch 1: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 187/187 [00:56<00:00,  3.33it/s]
+
