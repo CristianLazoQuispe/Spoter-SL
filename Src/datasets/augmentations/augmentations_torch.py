@@ -103,57 +103,87 @@ class augmentation():
         # Concatenar los dos tensores a lo largo de la segunda dimensión
         tensor_concatenado = torch.cat([body_landmarks, hand_landmarks], dim=1)
         return tensor_concatenado
+    def __rotate(self, origin: tuple, point: tuple, angle: float):
+        """
+        Rotates a point counterclockwise by a given angle around a given origin.
+        :param origin: Landmark in the (X, Y) format of the origin from which to count angle of rotation
+        :param point: Landmark in the (X, Y) format to be rotated
+        :param angle: Angle under which the point shall be rotated
+        :return: New landmarks (coordinates)
+        """
 
-    def augment_rotate(self, tensor, angle_range: tuple) -> dict:
-        ox, oy = 0.5,0.5
-        angle = torch.tensor(math.radians(random.uniform(*angle_range)))
+        ox, oy = origin
+        px, py = point
+
+        qx = ox + math.cos(angle) * (px - ox) - math.sin(angle) * (py - oy)
+        qy = oy + math.sin(angle) * (px - ox) + math.cos(angle) * (py - oy)
+
+        return qx, qy
+    def __rotate_torch(self, origin, tensor, angle: float):
+        """
+        Rotates a point counterclockwise by a given angle around a given origin.
+        :param origin: Landmark in the (X, Y) format of the origin from which to count angle of rotation
+        :param point: Landmark in the (X, Y) format to be rotated
+        :param angle: Angle under which the point shall be rotated
+        :return: New landmarks (coordinates)
+        """
+        if type(origin) == tuple:
+            ox, oy = origin        
+        else:
+            # tensor of origins
+            ox, oy = origin[:,0].unsqueeze(1),origin[:,1].unsqueeze(1)        
+
+        rotated = torch.zeros_like(tensor).to(self.device)
+        rotated[:,:,0] = ox + torch.cos(angle) * (tensor[:,:,0] - ox) - torch.sin(angle) * (tensor[:,:,1] - oy)
+        rotated[:,:,1] = oy + torch.sin(angle) * (tensor[:,:,0] - ox) + torch.cos(angle) * (tensor[:,:,1] - oy)
+        
+        return rotated
+
+    def __rotate_torch_origins(self, origins: tuple, tensor, angle: float):
+        """
+        Rotates a point counterclockwise by a given angle around a given origin.
+        :param origin: Landmark in the (X, Y) format of the origin from which to count angle of rotation
+        :param point: Landmark in the (X, Y) format to be rotated
+        :param angle: Angle under which the point shall be rotated
+        :return: New landmarks (coordinates)
+        """
+        print(f"tensor {tensor.shape}")
+        print(f"origins {origins.shape}")
+        print(f"ox {ox.shape}")
         rotated = torch.zeros_like(tensor)
         rotated[:,:,0] = ox + torch.cos(angle) * (tensor[:,:,0] - ox) - torch.sin(angle) * (tensor[:,:,1] - oy)
         rotated[:,:,1] = oy + torch.sin(angle) * (tensor[:,:,0] - ox) + torch.cos(angle) * (tensor[:,:,1] - oy)
+        
+        return rotated
+    def augment_rotate(self, tensor, angle_range,origin = (0.5,0.5)) -> dict:
+        angle = torch.tensor(math.radians(random.uniform(*angle_range)))
+        rotated = self.__rotate_torch(origin,tensor,angle)
         return rotated
 
     def augment_shear(self, sign: dict, type: str, squeeze_ratio: tuple) -> dict:
-        """
-        AUGMENTATION TECHNIQUE.
-            - Squeeze. All the frames are squeezed from both horizontal sides. Two different random proportions up to 15% of
-            the original frame's width for both left and right side are cut.
-            - Perspective transformation. The joint coordinates are projected onto a new plane with a spatially defined
-            center of projection, which simulates recording the sign video with a slight tilt. Each time, the right or left
-            side, as well as the proportion by which both the width and height will be reduced, are chosen randomly. This
-            proportion is selected from a uniform distribution on the [0; 1) interval. Subsequently, the new plane is
-            delineated by reducing the width at the desired side and the respective vertical edge (height) at both of its
-            adjacent corners.
-        :param sign: Dictionary with sequential skeletal data of the signing person
-        :param type: Type of shear augmentation to perform (either 'squeeze' or 'perspective')
-        :param squeeze_ratio: Tuple containing the relative range from what the proportion of the original width will be
-                            randomly chosen. These proportions will either be cut from both sides or used to construct the
-                            new projection
-        :return: Dictionary with augmented (by squeezing or perspective transformation) sequential skeletal data of the
-                signing person
-        """
-
-        #body_landmarks, hand_landmarks = self.__preprocess_row_sign(sign)
+        src = np.array(((0, 1), (1, 1), 
+                        (0, 0), (1, 0)), dtype=np.float32)
 
         if type == "squeeze":
             move_left = random.uniform(*squeeze_ratio)
             move_right = random.uniform(*squeeze_ratio)
 
-            src = np.array(((0, 1), (1, 1), (0, 0), (1, 0)), dtype=np.float32)
-            dest = np.array(((0 + move_left, 1), (1 - move_right, 1), (0 + move_left, 0), (1 - move_right, 0)),
-                            dtype=np.float32)
+            if random.random() > 0.5:
+                dest = np.array(((0 + move_left, 1), (1 - move_right, 1), 
+                                 (0 + move_left, 0), (1 - move_right, 0)),
+                                dtype=np.float32)
+            else:
+                dest = np.array(((0, 1+ move_left), (1, 1+ move_left), 
+                                 (0, 0- move_right), (1, 0- move_right)),
+                                dtype=np.float32)                
             mtx = cv2.getPerspectiveTransform(src, dest)
 
         elif type == "perspective":
 
-            move_ratio = random.uniform(*squeeze_ratio)
-            src = np.array(((0, 1), (1, 1), (0, 0), (1, 0)), dtype=np.float32)
-
-            if self.__random_pass(0.5):
-                dest = np.array(((0 + move_ratio, 1 - move_ratio), (1, 1), (0 + move_ratio, 0 + move_ratio), (1, 0)),
-                                dtype=np.float32)
-            else:
-                dest = np.array(((0, 1), (1 - move_ratio, 1 - move_ratio), (0, 0), (1 - move_ratio, 0 + move_ratio)),
-                                dtype=np.float32)
+            dest = np.array(((0+random.uniform(*squeeze_ratio), 1+random.uniform(*squeeze_ratio)), 
+                             (1+random.uniform(*squeeze_ratio), 1+random.uniform(*squeeze_ratio)), 
+                             (0+random.uniform(*squeeze_ratio), 0+random.uniform(*squeeze_ratio)),
+                             (1+random.uniform(*squeeze_ratio), 0+random.uniform(*squeeze_ratio))), dtype=np.float32)
 
             mtx = cv2.getPerspectiveTransform(src, dest)
 
@@ -163,50 +193,35 @@ class augmentation():
             return {}
 
 
-        landmarks_array = sign#[:,self.BODY_IDENTIFIERS,:]#self.__dictionary_to_numpy(body_landmarks)
-        augmented_landmarks = cv2.perspectiveTransform(np.array(landmarks_array.cpu(), dtype=np.float32), mtx)
-
+        augmented_landmarks = cv2.perspectiveTransform(np.array(sign.cpu(), dtype=np.float32), mtx)
+        
+        # reverse 0,0 in 0,0 because there are points not recognized and set 0,0
         augmented_zero_landmark = cv2.perspectiveTransform(np.array([[[0, 0]]], dtype=np.float32), mtx)[0][0]
         augmented_landmarks = np.stack([np.where(sub == augmented_zero_landmark, [0, 0], sub) for sub in augmented_landmarks])
-        #[:,self.BODY_IDENTIFIERS,:]
-        sign = torch.tensor(augmented_landmarks,device=self.device)
-        #body_landmarks = self.__numpy_to_dictionary(augmented_landmarks)
 
-        return sign#self.__wrap_sign_into_row(body_landmarks, hand_landmarks)
+        sign = torch.from_numpy(augmented_landmarks).to(self.device)
+        return sign
 
 
     def augment_arm_joint_rotate(self, sign: dict, probability: float, angle_range: tuple) -> dict:
-        """
-        AUGMENTATION TECHNIQUE. The joint coordinates of both arms are passed successively, and the impending landmark is
-        slightly rotated with respect to the current one. The chance of each joint to be rotated is 3:10 and the angle of
-        alternation is a uniform random angle up to +-4 degrees. This simulates slight, negligible variances in each
-        execution of a sign, which do not change its semantic meaning.
-        :param sign: Dictionary with sequential skeletal data of the signing person
-        :param probability: Probability of each joint to be rotated (float from the range [0, 1])
-        :param angle_range: Tuple containing the angle range (minimal and maximal angle in degrees) to randomly choose the
-                            angle by which the landmarks will be rotated from
-        :return: Dictionary with augmented (by arm joint rotation) sequential skeletal data of the signing person
-        """
-
+        
         body_landmarks, hand_landmarks = self.__preprocess_row_sign(sign)
 
         # Iterate over both directions (both hands)
         for arm_side_ids in self.ARM_IDENTIFIERS_ORDER:
             for landmark_index, landmark_origin in enumerate(arm_side_ids):
+                to_be_rotated  = arm_side_ids[landmark_index + 1:]
+                origins = sign[:,landmark_origin,:]
 
                 if self.__random_pass(probability):
-                    angle = math.radians(random.uniform(*angle_range))
-
-                    for to_be_rotated in arm_side_ids[landmark_index + 1:]:
-                        augmented_values = [self.__rotate(sign[frame_index,landmark_origin,:], frame, angle) for frame_index, frame in enumerate(sign[:,to_be_rotated,:])]
-                        augmented_values = torch.tensor(augmented_values,device=self.device)
-                        sign[:,to_be_rotated,:] = augmented_values
-        
+                    angle = torch.tensor(math.radians(random.uniform(*angle_range)))
+                    sign[:,to_be_rotated,:] = self.__rotate_torch(origins,sign[:,to_be_rotated,:],angle)                            
         return sign
 
     def get_random_transformation(self,selected_aug,depth_map_original):
         #print("selected_aug:",selected_aug)
-        depth_map = self.augment_rotate(depth_map_original, angle_range=(-23, 23))
+        #print("augment_arm_joint_rotate")
+        depth_map = self.augment_arm_joint_rotate(depth_map_original, 0.5, angle_range=(-15, 15))
         return depth_map
         """
         if selected_aug == 0:
