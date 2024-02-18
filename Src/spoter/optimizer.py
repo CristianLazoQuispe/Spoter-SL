@@ -57,8 +57,8 @@ class dynamic_weight_decay_diff:
 class dynamic_weight_decay:
     # segunda version puede ser con la razon de cambio de la diferencia
     def __init__(self,weight_decay_patience = 15,
-        weight_decay_max = 0.0005,
-        weight_decay_min = 0.00005,
+        weight_decay_max = 0.05,
+        weight_decay_min = 0.000005,
         kp=0.0001, ki=0.0, kd=0.0,setpoint=0.5):
 
         self.kp = kp
@@ -77,7 +77,7 @@ class dynamic_weight_decay:
     def step(self,train_loss, val_loss, weight_decay):
         current_value = val_loss-train_loss
 
-        error = self.setpoint - current_value
+        error = current_value-self.setpoint
         
         P = self.kp * error 
         self.integral += error

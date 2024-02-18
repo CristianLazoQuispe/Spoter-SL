@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [spoter_new+PIDdecay fold-5-seed-1-p100]
+    values: [spoter_new+PIDdecayGood fold-5-seed-1-p100]
   training_set_path:
     values: [
     "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_1_klod_1-Train.hdf5"]
@@ -53,7 +53,7 @@ parameters:
   weight_decay_dynamic:
     values: [1]
   weight_decay_kp:
-    values: [0.00005,0.0001,0.0005,0.001,0.005]
+    values: [0.0005,0.0001,0.001,0.005,0.01]
   weight_decay_ki:
     values: [0]
   weight_decay_kd:
