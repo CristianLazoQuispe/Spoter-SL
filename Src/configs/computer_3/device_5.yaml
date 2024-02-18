@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [Good+NoAug fold-5-seed-95-rtx6000]
+    values: [Good+SiAug fold-5-seed-95-rtx6000]
   training_set_path:
     values: [
     "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5",
