@@ -2,7 +2,6 @@ import gc
 import ast
 import tqdm
 import time
-import h5py
 import glob
 import json
 import torch
@@ -19,6 +18,7 @@ from .augmentations import augmentations
 
 import cv2
 
+import h5py
 def get_data_from_h5(path):
     hf = h5py.File(path, 'r')
     return hf
