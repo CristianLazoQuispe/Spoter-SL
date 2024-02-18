@@ -40,19 +40,21 @@ class AugmentedDataLoaderIterator:
                 
             depth_map = torch.from_numpy(self.dataset.data[idx]).to('cuda')
 
-            # Apply potential augmentations
-            if random.random() < self.dataset.augmentations_prob:        
-                n_aug = random.randrange(4)+1 #[1,2,3,4]
-                for j in range(n_aug):
-                    selected_aug = random.randrange(4)
-                    depth_map = self.dataset.augmentation.get_random_transformation(selected_aug,depth_map)
     
             video_name = self.dataset.video_name[idx].decode('utf-8')
             label = torch.Tensor([self.dataset.labels[idx]])
     
-            depth_map = depth_map - 0.5
             if self.dataset.transform:
+                # Apply potential augmentations
+                if random.random() > self.dataset.augmentations_prob:        
+                    n_aug = random.randrange(4)+1 #[1,2,3,4]
+                    for j in range(n_aug):
+                        selected_aug = random.randrange(4)
+                        depth_map = self.dataset.augmentation.get_random_transformation(selected_aug,depth_map)
+
                 depth_map = self.dataset.transform(depth_map)
+
+            depth_map = depth_map - 0.5
                 
             depth_maps[i] = depth_map.to('cuda')
             labels[i] = label.to('cuda', dtype=torch.long)
@@ -64,6 +66,6 @@ class AugmentedDataLoaderIterator:
 ############## SIN AUGMENTATION ####################
 #Train Epoch 21:   100%|████████████████████| 12/12 [00:08<00:00,  1.42it/s, id_aug=40, m_acc=0.0591, m_loss=4.25]
 #Val   Epoch 21:   100%|████████████████████| 3/3 [00:00<00:00,  3.51it/s, id_aug=59, m_acc=0.118, m_loss=4.16] 
-############## CON AUGMENTATION ####################
+############## CON AUGMENTATION factor 2 ####################
 #Train Epoch 7:    100%|████████████████████| 44/44 [00:28<00:00,  1.56it/s, id_aug=21, m_acc=0.0573, m_loss=3.9] 
 #Val   Epoch 7:    100%|████████████████████| 3/3 [00:00<00:00,  3.97it/s, id_aug=59, m_acc=0.0642, m_loss=4.18]

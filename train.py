@@ -166,8 +166,8 @@ def get_default_args():
                         help="factor para multiplicar los datos de augmentation")
     parser.add_argument("--batch_name", type=str, default="",
                         help=" | mean_1:calcula backward en cada batch | mean_2: calcula backward en cada instancia")    
-    parser.add_argument("--batch_size", type=int, default=32,help="batch_size ")
-    parser.add_argument("--num_workers", type=int, default=16,help="num_workers ")
+    parser.add_argument("--batch_size", type=int, default=64,help="batch_size ")
+    parser.add_argument("--num_workers", type=int, default=8,help="num_workers ")
                         
     parser.add_argument("--loss_weighted_factor", type=int, default=1,
                         help="Loss crossentropy weighted ")
