@@ -206,16 +206,16 @@ class augmentation():
         return depth_map
         """
         if selected_aug == 0:
-            depth_map = self.augment_rotate(depth_map_original, angle_range=(-20, 20))
+            depth_map = self.augment_rotate(depth_map_original, angle_range=(-24, 24))
 
         if selected_aug == 1:
-            depth_map = self.augment_shear(depth_map_original, "perspective", squeeze_ratio=(-0.2, 0.2))
+            depth_map = self.augment_shear(depth_map_original, "perspective", squeeze_ratio=(-0.25, 0.25))
 
         if selected_aug == 2:
-            depth_map = self.augment_shear(depth_map_original, "squeeze", squeeze_ratio=(0.2, -0.2))
+            depth_map = self.augment_shear(depth_map_original, "squeeze", squeeze_ratio=(0.25, -0.25))
 
         if selected_aug == 3:
-            depth_map = self.augment_arm_joint_rotate(depth_map_original, 0.5, angle_range=(-15, 15))
+            depth_map = self.augment_arm_joint_rotate(depth_map_original, 0.5, angle_range=(-18, 18))
         return depth_map
         #"""
     

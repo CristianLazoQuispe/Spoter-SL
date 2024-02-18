@@ -45,14 +45,13 @@ class AugmentedDataLoaderIterator:
             label = torch.Tensor([self.dataset.labels[idx]])
     
             if self.dataset.transform:
+                depth_map = self.dataset.transform(depth_map)
                 # Apply potential augmentations
-                if random.random() > self.dataset.augmentations_prob:        
-                    n_aug = random.randrange(4)+1 #[1,2,3,4]
-                    for j in range(n_aug):
+                n_aug = random.randrange(4)+1 #[1,2,3,4]
+                for j in range(n_aug):
+                    if random.random() > self.dataset.augmentations_prob:
                         selected_aug = random.randrange(4)
                         depth_map = self.dataset.augmentation.get_random_transformation(selected_aug,depth_map)
-
-                depth_map = self.dataset.transform(depth_map)
 
             depth_map = depth_map - 0.5
                 
