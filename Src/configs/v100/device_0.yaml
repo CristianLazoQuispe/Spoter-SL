@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [spoter_new+dimforward fold-5-seed-1-rtx6000]
+    values: [testing+spoter_new+dimforward fold-5-seed-1-rtx6000]
   training_set_path:
     values: [
     "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_1_klod_1-Train.hdf5",
@@ -33,7 +33,7 @@ parameters:
   device:
     values: [0]
   augmentation:
-    values: [0,1]
+    values: [1]
   factor_aug:
     values: [2]
   batch_name:

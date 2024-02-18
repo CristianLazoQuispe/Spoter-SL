@@ -35,15 +35,19 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                 break
             if i < 2 and epoch==0:
                 print("")
-                print("max inputs:", torch.max(inputs_total).item())
-                print("min inputs:", torch.min(inputs_total).item())
-                print("std inputs:", torch.std(inputs_total).item())
+                print("max inputs:", torch.max(inputs_total[0]).item())
+                print("min inputs:", torch.min(inputs_total[0]).item())
+                print("std inputs:", torch.std(inputs_total[0]).item())
 
-            if i<25:
-                list_depth_map_original.append(inputs_total)
-                list_label_name_original.append(videos_name_total)
+            if i==0:
+                list_depth_map_original = inputs_total
+                list_label_name_original = videos_name_total
 
-            for j, (inputs, labels,videos_name) in enumerate(zip(inputs_total,labels_total,videos_name_total)):
+            #for j, (inputs, labels,videos_name) in enumerate(zip(inputs_total,labels_total,videos_name_total)):
+            for j in range(len(inputs_total)):
+                inputs = inputs_total[j]
+                labels = labels_total[j]
+                videos_name = videos_name_total[j]
 
                 labels = labels.unsqueeze(0)
                 outputs = model(inputs).expand(1, -1, -1)
@@ -147,14 +151,19 @@ def evaluate(model, dataloader, criterion, device,epoch=0,args=None):
                 break
             if i < 2 and epoch==0:
                 print("")
-                print("max inputs:", torch.max(inputs_total).item())
-                print("min inputs:", torch.min(inputs_total).item())
-                print("std inputs:", torch.std(inputs_total).item())
-            if i<25:
-                list_depth_map_original.append(inputs_total)
-                list_label_name_original.append(videos_name_total)
+                print("max inputs:", torch.max(inputs_total[0]).item())
+                print("min inputs:", torch.min(inputs_total[0]).item())
+                print("std inputs:", torch.std(inputs_total[0]).item())
+            if i==0:
+                list_depth_map_original = inputs_total
+                list_label_name_original= videos_name_total
 
-            for j, (inputs, labels,videos_name) in enumerate(zip(inputs_total,labels_total,videos_name_total)):
+            #for j, (inputs, labels,videos_name) in enumerate(zip(inputs_total,labels_total,videos_name_total)):
+            for j in range(len(inputs_total)):
+                inputs = inputs_total[j]
+                labels = labels_total[j]
+                videos_name = videos_name_total[j]
+
                 labels = labels.unsqueeze(0)
                 with torch.no_grad():
                     outputs = model(inputs).expand(1, -1, -1)

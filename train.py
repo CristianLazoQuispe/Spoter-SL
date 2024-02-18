@@ -15,12 +15,13 @@ import matplotlib.ticker as ticker
 from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import label_binarize
 from torchvision import transforms
-from torch.utils.data import DataLoader
 from pathlib import Path
 
 from Src.datasets.utils_split import __balance_val_split, __split_of_train_sequence, __log_class_statistics
-from Src.datasets.Spoter_dataloader import LSP_Dataset
-from Src.datasets.Spoter_dataloader_aug import AugmentedDataLoader
+
+from Src.datasets.SpoterDataset import SpoterDataset
+from Src.datasets.SpoterDataLoader import SpoterDataLoader
+
 from Src.datasets.drawing import drawing
 
 from Src.spoter.spoter_model import SPOTER
@@ -165,8 +166,9 @@ def get_default_args():
                         help="factor para multiplicar los datos de augmentation")
     parser.add_argument("--batch_name", type=str, default="",
                         help=" | mean_1:calcula backward en cada batch | mean_2: calcula backward en cada instancia")    
-    parser.add_argument("--batch_size", type=int, default=0,
-                        help="batch_size ")
+    parser.add_argument("--batch_size", type=int, default=32,help="batch_size ")
+    parser.add_argument("--num_workers", type=int, default=16,help="num_workers ")
+                        
     parser.add_argument("--loss_weighted_factor", type=int, default=1,
                         help="Loss crossentropy weighted ")
     parser.add_argument("--label_smoothing", type=float, default=0,
@@ -270,34 +272,29 @@ def train(args):
     transform = transforms.Compose([GaussianNoise(args.gaussian_mean, args.gaussian_std)])
     
     if args.augmentation:
-        train_set = LSP_Dataset(args.training_set_path, transform=transform, has_transformation=False,has_normalization=False, keypoints_model='mediapipe',factor=args.factor_aug)
+        train_set = SpoterDataset(args.training_set_path, transform=transform, has_augmentation=True,keypoints_model='mediapipe',factor=args.factor_aug)
     else:
-        train_set = LSP_Dataset(args.training_set_path, transform=transform, has_transformation=True, has_normalization=True,keypoints_model='mediapipe')
+        train_set = SpoterDataset(args.training_set_path, transform=transform, has_augmentation=False,keypoints_model='mediapipe',factor=args.factor_aug)
 
     # Validation set
     if args.validation_set == "from-file":
-        #if args.augmentation:
-        #    print("AUGMENTATION UN VALIDATION")
-        #    val_set = LSP_Dataset(args.validation_set_path, keypoints_model='mediapipe', have_aumentation=False,has_normalization=False,factor=args.factor_aug)
-        #    val_loader = AugmentedDataLoader(val_set, shuffle=True, generator=g)
-        #else:
         print("NO AUGMENTATION UN VALIDATION")
-        val_set = LSP_Dataset(args.validation_set_path, keypoints_model='mediapipe', has_transformation=False,has_normalization=True)
-        val_loader = DataLoader(val_set, shuffle=True, generator=g)
+        val_set    = SpoterDataset(args.validation_set_path, has_augmentation=False,keypoints_model='mediapipe')
+        val_loader = SpoterDataLoader(val_set, shuffle=True, generator=g, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
 
     elif args.validation_set == "split-from-train":
         train_set, val_set = __balance_val_split(train_set, 0.2)
 
         val_set.transform = None
         val_set.augmentations = False
-        val_loader = DataLoader(val_set, shuffle=True, generator=g)
+        val_loader = SpoterDataLoader(val_set, shuffle=True, generator=g, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
     else:
         val_loader = None
 
     # Testing set
     if args.testing_set_path:
-        eval_set = LSP_Dataset(args.testing_set_path, keypoints_model='mediapipe', has_transformation=False,has_normalization=True)
-        eval_loader = DataLoader(eval_set, shuffle=True, generator=g)
+        eval_set = SpoterDataset(args.testing_set_path, has_augmentation=False,keypoints_model='mediapipe')
+        eval_loader = SpoterDataLoader(eval_set, shuffle=True, generator=g, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
     else:
         eval_loader = None
 
@@ -306,13 +303,7 @@ def train(args):
         train_set = __split_of_train_sequence(train_set, args.experimental_train_split)
 
 
-    if args.augmentation:
-        train_loader = AugmentedDataLoader(train_set, shuffle=True, generator=g)
-    else:
-        train_loader = DataLoader(train_set, shuffle=True, generator=g)
-    # Crea un nuevo DataLoader con el collate_fn personalizado
-    #train_loader = DataLoader(train_set, shuffle=True, generator=g, collate_fn=custom_collate_fn, batch_size=64)
-
+    train_loader = SpoterDataLoader(train_set, shuffle=True, generator=g, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
 
     # RETRIEVE TRAINING
     if args.continue_training:
@@ -670,11 +661,11 @@ def train(args):
         if epoch%100 == 0:
 
 
-            list_images_train,filename_train = drawer.get_video_frames_25_glosses(list_depth_map_train,list_label_name_train,suffix='train',save_gif=True)
+            list_images_train,filename_train = drawer.get_video_frames_25_glosses_batch(list_depth_map_train,list_label_name_train,suffix='train',save_gif=True)
             print("sending gif")
             #wandb.log({"train_video": wandb.Video(filename_train, fps=1, format="mp4")})
 
-            list_images_val,filename_val   = drawer.get_video_frames_25_glosses(list_depth_map_val,list_label_name_val,suffix='val',save_gif=True)
+            list_images_val,filename_val   = drawer.get_video_frames_25_glosses_batch(list_depth_map_val,list_label_name_val,suffix='val',save_gif=True)
             print("sending gif")
 
 

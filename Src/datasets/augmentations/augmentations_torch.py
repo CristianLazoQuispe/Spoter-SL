@@ -19,8 +19,8 @@ class augmentation():
         self.BODY_IDENTIFIERS = body_type_identifiers['pose']
         self.HAND_IDENTIFIERS = body_type_identifiers['left_hand'] + body_type_identifiers['rigth_hand']
         
-        Left_hand_id = ['pose_chest_middle_up', 'pose_left_shoulder', 'pose_left_elbow']#, 'pose_left_wrist']
-        right_hand_id = ['pose_chest_middle_up', 'pose_right_shoulder', 'pose_right_elbow']#, 'pose_right_wrist']
+        Left_hand_id = ['pose_chest_middle_up', 'pose_left_shoulder', 'pose_left_elbow', 'pose_left_wrist']
+        right_hand_id = ['pose_chest_middle_up', 'pose_right_shoulder', 'pose_right_elbow', 'pose_right_wrist']
 
         self.ARM_IDENTIFIERS_ORDER = [[body_section_dict[_id] for _id in Left_hand_id ],
                                       [body_section_dict[_id] for _id in right_hand_id]]
@@ -138,23 +138,7 @@ class augmentation():
         rotated[:,:,1] = oy + torch.sin(angle) * (tensor[:,:,0] - ox) + torch.cos(angle) * (tensor[:,:,1] - oy)
         
         return rotated
-
-    def __rotate_torch_origins(self, origins: tuple, tensor, angle: float):
-        """
-        Rotates a point counterclockwise by a given angle around a given origin.
-        :param origin: Landmark in the (X, Y) format of the origin from which to count angle of rotation
-        :param point: Landmark in the (X, Y) format to be rotated
-        :param angle: Angle under which the point shall be rotated
-        :return: New landmarks (coordinates)
-        """
-        print(f"tensor {tensor.shape}")
-        print(f"origins {origins.shape}")
-        print(f"ox {ox.shape}")
-        rotated = torch.zeros_like(tensor)
-        rotated[:,:,0] = ox + torch.cos(angle) * (tensor[:,:,0] - ox) - torch.sin(angle) * (tensor[:,:,1] - oy)
-        rotated[:,:,1] = oy + torch.sin(angle) * (tensor[:,:,0] - ox) + torch.cos(angle) * (tensor[:,:,1] - oy)
         
-        return rotated
     def augment_rotate(self, tensor, angle_range,origin = (0.5,0.5)) -> dict:
         angle = torch.tensor(math.radians(random.uniform(*angle_range)))
         rotated = self.__rotate_torch(origin,tensor,angle)
@@ -205,13 +189,11 @@ class augmentation():
 
     def augment_arm_joint_rotate(self, sign: dict, probability: float, angle_range: tuple) -> dict:
         
-        body_landmarks, hand_landmarks = self.__preprocess_row_sign(sign)
-
         # Iterate over both directions (both hands)
         for arm_side_ids in self.ARM_IDENTIFIERS_ORDER:
-            for landmark_index, landmark_origin in enumerate(arm_side_ids):
-                to_be_rotated  = arm_side_ids[landmark_index + 1:]
-                origins = sign[:,landmark_origin,:]
+            for landmark_index in range(len(arm_side_ids)-1):
+                origins = sign[:,arm_side_ids[landmark_index],:]
+                to_be_rotated  = [arm_side_ids[landmark_index + 1]]
 
                 if self.__random_pass(probability):
                     angle = torch.tensor(math.radians(random.uniform(*angle_range)))
@@ -219,24 +201,23 @@ class augmentation():
         return sign
 
     def get_random_transformation(self,selected_aug,depth_map_original):
-        #print("selected_aug:",selected_aug)
-        #print("augment_arm_joint_rotate")
-        depth_map = self.augment_arm_joint_rotate(depth_map_original, 0.5, angle_range=(-15, 15))
+        """
+        depth_map = self.augment_rotate(depth_map_original, angle_range=(-23, 23))
         return depth_map
         """
         if selected_aug == 0:
-            depth_map = self.augment_rotate(depth_map_original, angle_range=(-23, 23))
+            depth_map = self.augment_rotate(depth_map_original, angle_range=(-20, 20))
 
         if selected_aug == 1:
-            depth_map = self.augment_shear(depth_map_original, "perspective", squeeze_ratio=(-0.3, 0.3))
+            depth_map = self.augment_shear(depth_map_original, "perspective", squeeze_ratio=(-0.2, 0.2))
 
         if selected_aug == 2:
-            depth_map = self.augment_shear(depth_map_original, "squeeze", squeeze_ratio=(0.3, -0.3))
+            depth_map = self.augment_shear(depth_map_original, "squeeze", squeeze_ratio=(0.2, -0.2))
 
         if selected_aug == 3:
             depth_map = self.augment_arm_joint_rotate(depth_map_original, 0.5, angle_range=(-15, 15))
         return depth_map
-        """
+        #"""
     
     if __name__ == "__main__":
         pass
