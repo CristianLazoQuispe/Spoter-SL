@@ -7,6 +7,7 @@ import numpy as np
 import cv2
 import copy
 import os
+import random
 
 class drawing:
 
@@ -172,10 +173,11 @@ class drawing:
                     axs[i, j].imshow(img)
                     axs[i, j].axis('off')
             plt.tight_layout() 
-            plt.savefig(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}.jpg')
+            selected_aug = random.randrange(20)
+            plt.savefig(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
             plt.close(fig)
-            img = plt.imread(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}.jpg')    
-            os.remove(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}.jpg')
+            img = plt.imread(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')    
+            os.remove(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
             list_images.append(img) 
         filename = ''
         if save_gif:
@@ -224,10 +226,11 @@ class drawing:
                     axs[i, j].imshow(img)
                     axs[i, j].axis('off')
             plt.tight_layout() 
-            plt.savefig(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}.jpg')
+            selected_aug = random.randrange(20)
+            plt.savefig(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
             plt.close(fig)
-            img = plt.imread(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}.jpg')    
-            os.remove(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}.jpg')
+            img = plt.imread(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')    
+            os.remove(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
             list_images.append(img) 
         filename = ''
         if save_gif:
