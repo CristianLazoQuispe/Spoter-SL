@@ -8,6 +8,7 @@ import cv2
 import copy
 import os
 import random
+import time
 
 class drawing:
 
@@ -173,10 +174,11 @@ class drawing:
                     axs[i, j].imshow(img)
                     axs[i, j].axis('off')
             plt.tight_layout() 
-            selected_aug = random.randrange(20)
+            selected_aug = random.randrange(200)
             plt.savefig(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
             plt.close(fig)
             img = plt.imread(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')    
+            time.sleep(0.001) 
             os.remove(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
             list_images.append(img) 
         filename = ''
@@ -226,10 +228,11 @@ class drawing:
                     axs[i, j].imshow(img)
                     axs[i, j].axis('off')
             plt.tight_layout() 
-            selected_aug = random.randrange(20)
+            selected_aug = random.randrange(200)
             plt.savefig(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
             plt.close(fig)
-            img = plt.imread(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')    
+            img = plt.imread(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
+            time.sleep(0.001) 
             os.remove(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
             list_images.append(img) 
         filename = ''
