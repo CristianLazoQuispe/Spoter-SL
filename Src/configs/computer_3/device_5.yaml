@@ -5,11 +5,7 @@ parameters:
     values: [Good+SiAug fold-5-seed-95-rtx6000]
   training_set_path:
     values: [
-    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5",
-    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_2-Train.hdf5",
-    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_3-Train.hdf5",
-    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_4-Train.hdf5",
-    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_5-Train.hdf5"]
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5"]
   validation_set_path:
     values: [""]
   data_fold:
@@ -29,7 +25,7 @@ parameters:
   dim_feedforward_encoder:
     values: [256]
   dim_feedforward_decoder:
-    values: [1024,1280,2048,512] #
+    values: [64,32,512,1280,2048] #
   device:
     values: [1]
   augmentation:
