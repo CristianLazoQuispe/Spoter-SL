@@ -23,9 +23,9 @@ parameters:
   num_layers_2:
     values: [2] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
   dim_feedforward_encoder:
-    values: [256]
+    values: [64]
   dim_feedforward_decoder:
-    values: [64,32,512,1024,1280,2048] #
+    values: [4,16,64,32,512,1024,1280,2048] #
   device:
     values: [0]
   augmentation:

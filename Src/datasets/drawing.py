@@ -174,13 +174,16 @@ class drawing:
                     axs[i, j].imshow(img)
                     axs[i, j].axis('off')
             plt.tight_layout() 
-            selected_aug = random.randrange(200)
-            plt.savefig(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
-            plt.close(fig)
-            img = plt.imread(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')    
-            time.sleep(0.001) 
-            os.remove(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
-            list_images.append(img) 
+            try:
+                selected_aug = random.randrange(200)
+                plt.savefig(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
+                plt.close(fig)
+                img = plt.imread(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')    
+                time.sleep(0.001) 
+                os.remove(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
+                list_images.append(img) 
+            except:
+                pass
         filename = ''
         if save_gif:
             
@@ -228,13 +231,16 @@ class drawing:
                     axs[i, j].imshow(img)
                     axs[i, j].axis('off')
             plt.tight_layout() 
-            selected_aug = random.randrange(200)
-            plt.savefig(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
-            plt.close(fig)
-            img = plt.imread(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
-            time.sleep(0.001) 
-            os.remove(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
-            list_images.append(img) 
+            try:
+                selected_aug = random.randrange(200)
+                plt.savefig(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
+                plt.close(fig)
+                img = plt.imread(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
+                time.sleep(0.001) 
+                os.remove(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
+                list_images.append(img) 
+            except:
+                pass
         filename = ''
         if save_gif:
             
