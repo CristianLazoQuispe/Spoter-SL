@@ -658,25 +658,26 @@ def train(args):
                 
                 checkpoint_index += 1
 
-        if epoch%100 == 0:
-
-
+        if epoch%1000 == 0:
             list_images_train,filename_train = drawer.get_video_frames_25_glosses_batch(list_depth_map_train,list_label_name_train,suffix='train',save_gif=True)
             print("sending gif")
             #wandb.log({"train_video": wandb.Video(filename_train, fps=1, format="mp4")})
 
             list_images_val,filename_val   = drawer.get_video_frames_25_glosses_batch(list_depth_map_val,list_label_name_val,suffix='val',save_gif=True)
             print("sending gif")
+            if args.use_wandb:
+                if val_loader:
+                    wandb.log({"gloss_train_video": wandb.Video(filename_train, format="gif")})
+                    wandb.log({"gloss_val_video": wandb.Video(filename_val, format="gif")})
+                    #wandb.log({"val_video": wandb.Video(filename_val, fps=1,format="mp4")})
 
+        if epoch%100 == 0:
 
             if args.use_wandb:
                 if val_loader:
                     #log_values['Train_table_stats']   =  wandb.Table(dataframe=df_train_stats)
                     #log_values['Val_table_stats']     =  wandb.Table(dataframe=df_val_stats)
                     log_values['Compare_table_stats'] =  wandb.Table(dataframe=df_merged)
-                    #wandb.log({"val_video": wandb.Video(filename_val, fps=1,format="mp4")})
-                    wandb.log({"gloss_train_video": wandb.Video(filename_train, format="gif")})
-                    wandb.log({"gloss_val_video": wandb.Video(filename_val, format="gif")})
 
 
             if top_val_f1_weighted!= top_val_f1_weighted_before:
