@@ -41,9 +41,9 @@ parameters:
   label_smoothing:
     values: [0.1]
   early_stopping_patience:
-    values: [300]
+    values: [1000]
   epochs:
-    values: [10000]
+    values: [20000]
   scheduler:
     values: ["plateu"]
   optimizer:
@@ -64,3 +64,5 @@ parameters:
 #python train.py --device=0 --dim_feedforward=128 --lr=0.0001 --num_heads=54 --num_layers_1=32 --num_layers_2=256 --sweep=1 --augmentation=1
 
 #python train.py --augmentation=0 --batch_name=mean_1 --batch_size=64 --data_fold=5 --data_seed=1 --device=0 --dim_feedforward=8 --dropout=0.3 --early_stopping_patience=500 --epochs=1000 "--experiment_name=original +aug fold-5-seed-123-p100" --factor_aug=2 --gaussian_std=0.001 --label_smoothing=0.1 --loss_weighted_factor=2 --lr=0.0001 --num_heads=3 --num_layers_1=3 --num_layers_2=2 --optimizer=adam --scheduler=plateu --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_123_klod_1-Train.hdf5 --use_wandb=0 --validation_set_path= --weight_decay=0.0001 --weight_decay_dynamic=1 --hidden_dim=108
+
+#P100V100
