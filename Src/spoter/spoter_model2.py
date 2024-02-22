@@ -23,16 +23,18 @@ class SPOTERTransformerDecoderLayer2(nn.TransformerDecoderLayer):
 
     def forward(self, tgt: torch.Tensor, memory: torch.Tensor, tgt_mask: Optional[torch.Tensor] = None,
                 memory_mask: Optional[torch.Tensor] = None, tgt_key_padding_mask: Optional[torch.Tensor] = None,
-                memory_key_padding_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+                memory_key_padding_mask: Optional[torch.Tensor] = None,
+                tgt_is_causal: bool = False,
+                memory_is_causal: bool = False) -> torch.Tensor:
 
         x = tgt
         if self.norm_first:
-            x = x + self._sa_block(self.norm1(x), tgt_mask, tgt_key_padding_mask)
-            x = x + self._mha_block(self.norm2(x), memory, memory_mask, memory_key_padding_mask)
+            x = x + self._sa_block(self.norm1(x), tgt_mask, tgt_key_padding_mask,tgt_is_causal)#x + self.dropout1(self.norm1(tgt))
+            x = x + self._mha_block(self.norm2(x), memory, memory_mask, memory_key_padding_mask,memory_is_causal)
             x = x + self._ff_block(self.norm3(x))
         else:
-            x = self.norm1(x + self._sa_block(x, tgt_mask, tgt_key_padding_mask))
-            x = self.norm2(x + self._mha_block(x, memory, memory_mask, memory_key_padding_mask))
+            x = self.norm1(x + self._sa_block(x, tgt_mask, tgt_key_padding_mask,tgt_is_causal))#self.norm1(x + self.dropout1(tgt))
+            x = self.norm2(x + self._mha_block(x, memory, memory_mask, memory_key_padding_mask,memory_is_causal))
             x = self.norm3(x + self._ff_block(x))
 
         return x
@@ -51,6 +53,7 @@ class SPOTERTransformerDecoderLayer2(nn.TransformerDecoderLayer):
     # multihead attention block
     def _mha_block(self, x: Tensor, mem: Tensor,
                    attn_mask: Optional[Tensor], key_padding_mask: Optional[Tensor], is_causal: bool = False) -> Tensor:
+        
         x = self.multihead_attn(x, mem, mem,
                                 attn_mask=attn_mask,
                                 key_padding_mask=key_padding_mask,

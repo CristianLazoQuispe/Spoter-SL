@@ -5,7 +5,7 @@ import csv
 import wandb
 import tqdm
 
-def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_norm=1.0,epoch=0,args=None,grad_scaler=None):
+def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_norm=12.0,epoch=0,args=None,grad_scaler=None):
 
     k = 5
     
@@ -84,6 +84,8 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                         if batch_name =='mean_1':
                             averaged_loss = accumulated_loss / batch_size
                             grad_scaler.scale(averaged_loss).backward()
+
+                        grad_scaler.unscale_(optimizer)
                         nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
                         #optimizer.step()
                         grad_scaler.step(optimizer)
@@ -96,6 +98,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                         counter = 0
                 else:
                     grad_scaler.scale(loss).backward()
+                    grad_scaler.unscale_(optimizer)
                     nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
                     #optimizer.step()
                     grad_scaler.step(optimizer)
@@ -126,6 +129,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
         if counter > 0 and accumulated_loss.item()>0:
             averaged_loss = accumulated_loss / counter
             grad_scaler.scale(averaged_loss).backward()
+            grad_scaler.unscale_(optimizer)
             nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
             #optimizer.step()
             grad_scaler.step(optimizer)
@@ -133,6 +137,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
             optimizer.zero_grad(set_to_none=True)
     if batch_name =='mean_2':
         if running_loss>0:
+            grad_scaler.unscale_(optimizer)
             nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
             #optimizer.step()
             grad_scaler.step(optimizer)
@@ -189,10 +194,11 @@ def evaluate(model, dataloader, criterion, device,epoch=0,args=None):
                 loss = criterion(outputs[0], labels[0])
                 label_original = int(labels[0][0])
                 if torch.isnan(loss):
-                    print(f"NaN loss detected at iteration {i+1}, {j+1}. Skipping this iteration.")
-                    print("outputs[0]:",outputs[0])
-                    print("labels[0]: ", labels[0])
-                    print("loss: ", loss)
+                    if j<2:
+                        print(f"NaN loss detected at iteration {i+1}, {j+1}. Skipping this iteration.")
+                        print("outputs[0]:",outputs[0])
+                        print("labels[0]: ", labels[0])
+                        print("loss: ", loss)
                     tepoch.set_postfix(id_aug=j+1,m_loss=None)
                     labels_predicted.append(-1)
                     labels_original.append(label_original)

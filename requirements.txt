@@ -1,7 +1,7 @@
 pandas==1.1.5
 tqdm
 matplotlib
-torch==2.0.1
+torch==2.2.0
 torchvision
 scikit-learn
 opencv-python
