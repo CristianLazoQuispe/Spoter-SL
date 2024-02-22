@@ -479,8 +479,8 @@ def train(args):
     if args.scheduler == 'steplr':
         lr_scheduler = optim.lr_scheduler.StepLR(sgd_optimizer, step_size=1, gamma=0.9995)
     if args.scheduler == 'plateu':
-        #args.scheduler_patience
-        lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='max', factor=args.scheduler_factor, patience=1000000, verbose=False,threshold=0.0001, threshold_mode='rel',cooldown=0, min_lr=0.00001, eps=1e-08)
+        #args.
+        lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='max', factor=args.scheduler_factor, patience=args.scheduler_patience, verbose=False,threshold=0.0001, threshold_mode='rel',cooldown=0, min_lr=0.00001, eps=1e-08)
         #lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='max', factor=0.1, patience=5, verbose=True)
 
         if args.weight_decay_dynamic:
@@ -564,7 +564,7 @@ def train(args):
         # CLASS WEIGHT
         print("train_set.factors",train_set.factors)
         factors = [train_set.factors[i]**args.loss_weighted_factor for i in range(args.num_classes)]
-        min_factor = sum(factors)
+        min_factor = min(factors) #sum es indiferente porque lo normaliza 
         factors = [value/min_factor for value in factors]
 
         name_factors = {train_set.inv_dict_labels_dataset[i]:value for i, value in enumerate(factors)}
