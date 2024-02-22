@@ -29,7 +29,7 @@ parameters:
   dim_feedforward_decoder:
     values: [1024,512,16,64,2048] #16-2-64
   device:
-    values: [1]
+    values: [0]
   augmentation:
     values: [1]
   factor_aug:
