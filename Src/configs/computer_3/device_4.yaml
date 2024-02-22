@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [Good+NoAug fold-5-seed-95-rtx6000]
+    values: [NewSpoter fold-5-seed-95-p100]
   #models_random_name:
   #  values: [sin_congelar_pesos_xyz1] # se omite porque esto sirve para que tome los pesos del modelo anterior
   training_set_path:
@@ -25,13 +25,13 @@ parameters:
   num_layers_2:
     values: [2] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
   dim_feedforward_encoder:
-    values: [8]
+    values: [16]
   dim_feedforward_decoder:
-    values: [128,16,64,512] #64,2048
+    values: [256,32,8,1024] #16-2-64
   device:
     values: [0]
   augmentation:
-    values: [0]
+    values: [1]
   factor_aug:
     values: [2]
   batch_name:
@@ -45,7 +45,7 @@ parameters:
   early_stopping_patience:
     values: [1000]
   epochs:
-    values: [20000]
+    values: [10000]
   scheduler:
     values: ["plateu"]
   optimizer:
@@ -65,7 +65,7 @@ parameters:
   use_spoter2:
     values : [1]
   norm_first:
-    values : [1]
+    values : [0,1]
   not_requires_grad_n_layers:
     values : [1]
 
@@ -74,3 +74,5 @@ parameters:
 #2024-02-22 03:31:24,067 - wandb.wandb_agent - INFO - About to run command: /usr/bin/env python train.py --augmentation=0 --batch_name=mean_1 --batch_size=64 --data_fold=5 --data_seed=95 --device=0 --dim_feedforward_decoder=1024 --dim_feedforward_encoder=256 --dropout=0.3 --early_stopping_patience=1000 --epochs=20000 "--experiment_name=Good+NoAug fold-5-seed-95-rtx6000" --factor_aug=2 --gaussian_std=0.001 --hidden_dim=108 --label_smoothing=0.1 --loss_weighted_factor=2 --lr=0.0001 --models_random_name=sin_congelar_pesos_xyz1 --norm_first=1 --not_requires_grad_n_layers=1 --num_heads=2 --num_layers_1=3 --num_layers_2=2 --optimizer=adam --scheduler=plateu --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --use_spoter2=1 --use_wandb=1 --validation_set_path= --weight_decay=0.0001 --weight_decay_dynamic=0
 
 #RTX60000
+
+#pruebas en la sesion 4
