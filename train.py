@@ -420,6 +420,10 @@ def train(args):
     
 
     if args.use_wandb:
+        if (args.resume and checkpoint is not None):
+            print("RESUME MUST")
+            print("RESUME MUST")
+            print("RESUME MUST")
         # MARK: TRAINING PREPARATION AND MODULES
         run = wandb.init(project=PROJECT_WANDB, 
                         entity=ENTITY,
@@ -427,7 +431,8 @@ def train(args):
                         name=args.experiment_name, 
                         job_type="model-training",
                         save_code=True,
-                        settings=wandb.Settings(start_method="fork"),
+                        #settings=wandb.Settings(start_method="fork"),
+                        resume="must" if (args.resume and checkpoint is not None)  else None,
                         id=checkpoint["wandb"] if (args.resume and checkpoint is not None)  else None,
                         tags=["paper"])
 
@@ -477,7 +482,8 @@ def train(args):
     if args.scheduler == 'steplr':
         lr_scheduler = optim.lr_scheduler.StepLR(sgd_optimizer, step_size=1, gamma=0.9995)
     if args.scheduler == 'plateu':
-        lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='max', factor=args.scheduler_factor, patience=args.scheduler_patience, verbose=False,threshold=0.0001, threshold_mode='rel',cooldown=0, min_lr=0.00001, eps=1e-08)
+        #args.scheduler_patience
+        lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='max', factor=args.scheduler_factor, patience=1000000, verbose=False,threshold=0.0001, threshold_mode='rel',cooldown=0, min_lr=0.00001, eps=1e-08)
         #lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(sgd_optimizer, mode='max', factor=0.1, patience=5, verbose=True)
 
         if args.weight_decay_dynamic:
@@ -521,7 +527,7 @@ def train(args):
         })
 
         config = wandb.config
-        wandb.watch_called = False
+        #wandb.watch_called = False
 
     
     # MARK: TRAINING
@@ -561,7 +567,7 @@ def train(args):
         # CLASS WEIGHT
         print("train_set.factors",train_set.factors)
         factors = [train_set.factors[i]**args.loss_weighted_factor for i in range(args.num_classes)]
-        min_factor = min(factors)
+        min_factor = sum(factors)
         factors = [value/min_factor for value in factors]
 
         name_factors = {train_set.inv_dict_labels_dataset[i]:value for i, value in enumerate(factors)}
@@ -581,6 +587,12 @@ def train(args):
     print("training_set_path   :",args.training_set_path)
     print("validation_set_path :",args.validation_set_path)
 
+    amp = True
+    grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
+
+    step = run.summary.get("_step")
+    
+    step = 0 if step is None else step+1
 
     for epoch in range(epoch_start, args.epochs):
 
@@ -590,7 +602,7 @@ def train(args):
         current_lr = sgd_optimizer.param_groups[0]["lr"]
         current_weight_decay = sgd_optimizer.param_groups[0]['weight_decay']
         train_loss,train_stats,train_labels_original,train_labels_predicted,list_depth_map_train,list_label_name_train = train_epoch(slrt_model, train_loader, 
-        cel_criterion, sgd_optimizer,device,epoch=epoch,args=args)
+        cel_criterion, sgd_optimizer,device,epoch=epoch,args=args,grad_scaler=grad_scaler)
         
         train_acc   = f1_score(train_labels_original, train_labels_predicted, average='micro',zero_division=0)
 
@@ -810,7 +822,8 @@ def train(args):
 
         if val_loader:
             if args.use_wandb:
-                wandb.log(log_values)
+                wandb.log(log_values, step=step)
+                step+=1
 
         lr_progress.append(sgd_optimizer.param_groups[0]["lr"])
 

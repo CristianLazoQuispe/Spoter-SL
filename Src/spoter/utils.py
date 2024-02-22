@@ -5,7 +5,7 @@ import csv
 import wandb
 import tqdm
 
-def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_norm=1.0,epoch=0,args=None):
+def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_norm=1.0,epoch=0,args=None,grad_scaler=None):
 
     k = 5
     
@@ -44,14 +44,24 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                 list_label_name_original = videos_name_total
 
             #for j, (inputs, labels,videos_name) in enumerate(zip(inputs_total,labels_total,videos_name_total)):
+
             for j in range(len(inputs_total)):
                 inputs = inputs_total[j]
                 labels = labels_total[j]
                 videos_name = videos_name_total[j]
 
                 labels = labels.unsqueeze(0)
-                outputs = model(inputs).expand(1, -1, -1)
-                loss = criterion(outputs[0], labels[0])
+
+                with torch.autocast(device_type="cuda",enabled=True):
+
+                    outputs = model(inputs).expand(1, -1, -1)
+                    loss = criterion(outputs[0], labels[0])
+
+                #nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
+                
+                #grad_scaler.scale(loss).backward()
+                #torch.nn.utils.clip_grad_norm_(model.parameters(), gradient_clipping)
+                
                 label_original  = int(labels[0][0])
                 if torch.isnan(loss):
                     #print(f"NaN loss detected at iteration {i+1}, {j+1}. Skipping this iteration.")
@@ -61,7 +71,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                     continue  # Otra opción podría ser detener el bucle o el entrenamiento aquí
 
                 if batch_name =='mean_2':
-                    loss.backward()
+                    grad_scaler.scale(loss).backward()
 
                 running_loss += loss.item()
                 if batch_name!='':
@@ -73,20 +83,25 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                     if counter == batch_size:
                         if batch_name =='mean_1':
                             averaged_loss = accumulated_loss / batch_size
-                            averaged_loss.backward()
+                            grad_scaler.scale(averaged_loss).backward()
                         nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
-                        optimizer.step()
-                        optimizer.zero_grad()
+                        #optimizer.step()
+                        grad_scaler.step(optimizer)
+                        grad_scaler.update()
+                        optimizer.zero_grad(set_to_none=True)
+
 
                         # Reiniciar contadores y acumulador de pérdida
                         accumulated_loss = 0
                         counter = 0
                 else:
-                    loss.backward()
+                    grad_scaler.scale(loss).backward()
                     nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
-                    optimizer.step()
-                    optimizer.zero_grad()
-                
+                    #optimizer.step()
+                    grad_scaler.step(optimizer)
+                    grad_scaler.update()
+                    optimizer.zero_grad(set_to_none=True)
+
                 label_predicted = int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2)))
 
                 labels_predicted.append(label_predicted)
@@ -105,20 +120,24 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                 #tqdm.tqdm.write(f"ID:{i+1} IDaug:{j+1} | Loss: {running_loss/pred_all} Acc: {pred_correct / pred_all}")
                 tepoch.set_postfix(id_aug=j+1,m_loss=running_loss/pred_all,m_acc=pred_correct / pred_all)
 
+
     # Asegurarse de realizar el último paso de retropropagación si es necesario
     if batch_name =='mean_1':
         if counter > 0 and accumulated_loss.item()>0:
             averaged_loss = accumulated_loss / counter
-            averaged_loss.backward()
+            grad_scaler.scale(averaged_loss).backward()
             nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
-            optimizer.step()
-            optimizer.zero_grad()
+            #optimizer.step()
+            grad_scaler.step(optimizer)
+            grad_scaler.update()
+            optimizer.zero_grad(set_to_none=True)
     if batch_name =='mean_2':
         if running_loss>0:
             nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
-            optimizer.step()
-            optimizer.zero_grad()
-
+            #optimizer.step()
+            grad_scaler.step(optimizer)
+            grad_scaler.update()            
+            optimizer.zero_grad(set_to_none=True)
     pred_all= 1 if pred_all == 0 else pred_all
     train_loss = None if running_loss == 0 else running_loss/pred_all
 
