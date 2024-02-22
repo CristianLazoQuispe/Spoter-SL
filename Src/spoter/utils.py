@@ -170,7 +170,10 @@ def evaluate(model, dataloader, criterion, device,epoch=0,args=None):
                 loss = criterion(outputs[0], labels[0])
                 label_original = int(labels[0][0])
                 if torch.isnan(loss):
-                    #print(f"NaN loss detected at iteration {i+1}, {j+1}. Skipping this iteration.")
+                    print(f"NaN loss detected at iteration {i+1}, {j+1}. Skipping this iteration.")
+                    print("outputs[0]:",outputs[0])
+                    print("labels[0]: ", labels[0])
+                    print("loss: ", loss)
                     tepoch.set_postfix(id_aug=j+1,m_loss=None)
                     labels_predicted.append(-1)
                     labels_original.append(label_original)

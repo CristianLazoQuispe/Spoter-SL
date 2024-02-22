@@ -25,6 +25,7 @@ from Src.datasets.SpoterDataLoader import SpoterDataLoader
 from Src.datasets.drawing import drawing
 
 from Src.spoter.spoter_model import SPOTER
+from Src.spoter.spoter_model2 import SPOTER2
 from Src.spoter.utils import train_epoch, evaluate, generate_csv_result, generate_csv_accuracy
 from Src.spoter.gaussian_noise import GaussianNoise
 from Src.spoter.gpu import configurar_cuda_visible
@@ -38,6 +39,10 @@ from Src.spoter import save_artifact
 import atexit
 
 import gc
+import argparse
+import hashlib
+import random
+import string
 
 run = None
 model_save_folder_path = None
@@ -87,6 +92,10 @@ def get_default_args():
 
     parser.add_argument("--experiment_name", type=str, default="305-aec-sw",
                         help="Name of the experiment after which the logs and plots will be named")
+
+    parser.add_argument("--models_random_name", type=str, default="",
+                        help="Name of the experiment after which the logs and plots will be named")
+
     parser.add_argument("--num_classes", type=int, default=38, help="Number of classes to be recognized by the model")
     parser.add_argument("--seed", type=int, default=379,
                         help="Seed with which to initialize all the random components of the training")
@@ -116,6 +125,11 @@ def get_default_args():
     
     parser.add_argument("--sweep", type=int, default=0, help="")
     parser.add_argument("--num_rows", type=int, default=64, help="")
+    parser.add_argument("--use_spoter2", type=int, default=0, help="")
+    parser.add_argument("--norm_first", type=int, default=0, help="")
+    parser.add_argument("--not_requires_grad_n_layers", type=int, default=1, help="")
+    
+
     parser.add_argument("--hidden_dim", type=int, default=108, help="")
     parser.add_argument("--num_heads", type=int, default=9, help="")
     parser.add_argument("--num_layers_1", type=int, default=6, help="")
@@ -158,7 +172,7 @@ def get_default_args():
     parser.add_argument("--device", type=str, default='0',
                     help="Determines which Nvidia device will use (just one number)")
     # To continue training the data
-    parser.add_argument("--continue_training", type=str, default="",help="path to retrieve the model for continue training")
+    parser.add_argument("--resume", type=int, default=1,help="path to retrieve the model for continue training")
     parser.add_argument("--transfer_learning", type=str, default="",help="path to retrieve the model for transfer learning")
     parser.add_argument("--augmentation", type=int, default=0,
                         help="Augmentations")
@@ -214,6 +228,15 @@ def get_df_stats(data_set,stats,num_classes):
     df_stats = df_stats.sort_values(by='gloss')
     return df_stats
 
+import random
+import string
+
+def generate_string(longitud):
+    caracteres = string.ascii_letters + string.digits
+    cadena = ''.join(random.choice(caracteres) for i in range(longitud))
+    
+    return cadena
+
 def train(args):
     global run,model_save_folder_path
     global top_val_f1_weighted,top_val_f1_weighted_before
@@ -223,15 +246,27 @@ def train(args):
         if args.validation_set_path == "":
             args.validation_set_path = args.training_set_path.replace("Train","Val")
 
+    if args.models_random_name == '':
+        #args.models_random_name = generate_string(10)
 
-    if args.use_wandb:
-        # MARK: TRAINING PREPARATION AND MODULES
-        run = wandb.init(project=PROJECT_WANDB, 
-                        entity=ENTITY,
-                        config=args, 
-                        name=args.experiment_name, 
-                        job_type="model-training",
-                        tags=["paper"])
+        key_parts = []
+        for k, v in vars(args).items():
+            key_parts.append(f"{k}_{v}")
+
+        key = "".join(key_parts) 
+
+        # Generar string aleatorio
+        suffix = ''.join(random.choice(string.ascii_letters + string.digits) for i in range(5))
+
+        # Crear hash final
+        hash_object = hashlib.md5(key.encode())
+        models_random_name = hash_object.hexdigest()[:8]
+
+        print(models_random_name) 
+        args.models_random_name =  models_random_name
+
+    args.models_random_name += "-"+str(args.hidden_dim)+"-"+str(args.num_heads)+"-"+ str(args.num_layers_1)+"-"
+    args.models_random_name += str(args.num_layers_2)+"-"+str(args.dim_feedforward_encoder)+"-"+str(args.dim_feedforward_decoder)
 
     # Initialize all the random seeds
     random.seed(args.seed)
@@ -271,6 +306,131 @@ def train(args):
         # Training set
     transform = transforms.Compose([GaussianNoise(args.gaussian_mean, args.gaussian_std)])
     
+
+    # Ensure that the path for checkpointing and for images both exist
+    Path("Results/").mkdir(parents=True, exist_ok=True)
+    
+    
+
+    Path("Results/checkpoints/" + args.experiment_name + "/").mkdir(parents=True, exist_ok=True)
+    Path("Results/checkpoints/" + args.experiment_name + "/"+args.training_set_path.split("/")[-1].split(".")[0]+"/").mkdir(parents=True, exist_ok=True)
+    Path("Results/checkpoints/" + args.experiment_name + "/"+args.training_set_path.split("/")[-1].split(".")[0]+"/"+args.models_random_name+"/").mkdir(parents=True, exist_ok=True)
+    Path("Results/images/metrics/").mkdir(parents=True, exist_ok=True)
+    Path("Results/images/histograms/").mkdir(parents=True, exist_ok=True)
+    Path("Results/images/keypoints/").mkdir(parents=True, exist_ok=True)
+
+    epoch_start = 0
+
+    checkpoint = None
+    # RETRIEVE TRAINING
+    if args.resume:
+        model_save_folder_path = os.path.join("Results/checkpoints/" + args.experiment_name,
+        args.training_set_path.split("/")[-1].split(".")[0],
+        args.models_random_name)
+
+        path_model = model_save_folder_path+'/checkpoint_model.pth'
+        print("path_model:",path_model)
+        if args.use_spoter2:
+            print("USING SPOTER Version 2")
+            slrt_model = SPOTER2(num_classes=args.num_classes, num_rows=args.num_rows,
+                                hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
+                                num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
+                                dim_feedforward_encoder=args.dim_feedforward_encoder,
+                                dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout,
+                                norm_first = bool(args.norm_first),
+                                not_requires_grad_n_layers = bool(args.not_requires_grad_n_layers))
+
+        else:
+            slrt_model = SPOTER(num_classes=args.num_classes, num_rows=args.num_rows,
+                                hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
+                                num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
+                                dim_feedforward_encoder=args.dim_feedforward_encoder,
+                                dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout)
+
+        if os.path.exists(path_model):
+            print("RESUME MODEL : Load weights")
+            checkpoint = torch.load(path_model)
+            print("wandb id:",checkpoint["wandb"])
+            #print("lr      :",checkpoint["lr"])
+            print("epoch   :",checkpoint["epoch"])
+            slrt_model.load_state_dict(checkpoint['model_state_dict'])
+            slrt_model.to("cuda")
+            args.lr = 0.000099#checkpoint['lr']
+
+        if args.optimizer == 'adam':
+            sgd_optimizer = optim.Adam(slrt_model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+        else:
+            sgd_optimizer = optim.SGD(slrt_model.parameters(), lr=args.lr)
+
+        if os.path.exists(path_model):
+            print("RESUME MODEL : Load optimizer")
+            sgd_optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            epoch_start = checkpoint['epoch']
+
+    # TRANSFER LEARNING
+    elif args.transfer_learning:
+        slrt_model = SPOTER(num_classes=100, num_rows=args.num_rows,
+                            hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
+                            num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
+                            dim_feedforward=args.dim_feedforward)
+        checkpoint = torch.load(args.transfer_learning)
+        slrt_model.load_state_dict(checkpoint['model_state_dict'])
+
+        # freeze all model layer
+        for param in slrt_model.parameters():
+            param.requires_grad = False
+
+        slrt_model.linear_class = nn.Linear(slrt_model.linear_class.in_features, args.num_classes)
+
+        # unfreeze last model layer
+        for param in slrt_model.linear_class.parameters():
+            param.requires_grad = True
+
+        sgd_optimizer = optim.SGD(slrt_model.linear_class.parameters(), lr=args.lr)
+
+    # Normal scenario
+    else:
+
+
+        if args.use_spoter2:
+            print("USING SPOTER Version 2")
+            slrt_model = SPOTER2(num_classes=args.num_classes, num_rows=args.num_rows,
+                                hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
+                                num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
+                                dim_feedforward_encoder=args.dim_feedforward_encoder,
+                                dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout,
+                                norm_first = bool(args.norm_first),
+                                not_requires_grad_n_layers = bool(args.not_requires_grad_n_layers))
+
+        else:
+            slrt_model = SPOTER(num_classes=args.num_classes, num_rows=args.num_rows,
+                                hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
+                                num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
+                                dim_feedforward_encoder=args.dim_feedforward_encoder,
+                                dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout)
+
+        if args.optimizer == 'adam':
+            sgd_optimizer = optim.Adam(slrt_model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+            #sgd_optimizer = optim.AdamW(slrt_model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+
+        else:
+            sgd_optimizer = optim.SGD(slrt_model.parameters(), lr=args.lr)
+
+    # Construct the model
+    
+
+    if args.use_wandb:
+        # MARK: TRAINING PREPARATION AND MODULES
+        run = wandb.init(project=PROJECT_WANDB, 
+                        entity=ENTITY,
+                        config=args, 
+                        name=args.experiment_name, 
+                        job_type="model-training",
+                        save_code=True,
+                        settings=wandb.Settings(start_method="fork"),
+                        id=checkpoint["wandb"] if (args.resume and checkpoint is not None)  else None,
+                        tags=["paper"])
+
     if args.augmentation:
         train_set = SpoterDataset(args.training_set_path, transform=transform, has_augmentation=True,keypoints_model='mediapipe',factor=args.factor_aug)
     else:
@@ -305,67 +465,12 @@ def train(args):
 
     train_loader = SpoterDataLoader(train_set, shuffle=True, generator=g, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
 
-    # RETRIEVE TRAINING
-    if args.continue_training:
-
-        slrt_model = SPOTER(num_classes=args.num_classes, num_rows=args.num_rows,
-                            hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
-                            num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
-                            dim_feedforward_encoder=args.dim_feedforward_encoder,
-                            dim_feedforward_decoder=args.dim_feedforward_decoder)
-
-        checkpoint = torch.load(args.continue_training)
-        slrt_model.load_state_dict(checkpoint['model_state_dict'])
-
-        sgd_optimizer = optim.SGD(slrt_model.parameters(), lr=args.lr)
-
-        sgd_optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        epoch_start = checkpoint['epoch']
-
-    # TRANSFER LEARNING
-    elif args.transfer_learning:
-        slrt_model = SPOTER(num_classes=100, num_rows=args.num_rows,
-                            hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
-                            num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
-                            dim_feedforward=args.dim_feedforward)
-        checkpoint = torch.load(args.transfer_learning)
-        slrt_model.load_state_dict(checkpoint['model_state_dict'])
-
-        # freeze all model layer
-        for param in slrt_model.parameters():
-            param.requires_grad = False
-
-        slrt_model.linear_class = nn.Linear(slrt_model.linear_class.in_features, args.num_classes)
-
-        # unfreeze last model layer
-        for param in slrt_model.linear_class.parameters():
-            param.requires_grad = True
-
-        sgd_optimizer = optim.SGD(slrt_model.linear_class.parameters(), lr=args.lr)
-
-    # Normal scenario
-    else:
-
-        slrt_model = SPOTER(num_classes=args.num_classes, num_rows=args.num_rows,
-                            hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
-                            num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
-                            dim_feedforward_encoder=args.dim_feedforward_encoder,
-                            dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout)
-        if args.optimizer == 'adam':
-            sgd_optimizer = optim.Adam(slrt_model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-            #sgd_optimizer = optim.AdamW(slrt_model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-
-        else:
-            sgd_optimizer = optim.SGD(slrt_model.parameters(), lr=args.lr)
-
-    # Construct the model
-        
+    
 
     # Construct the other modules
     
 
     
-    epoch_start = 0
 
     lr_scheduler = None
 
@@ -386,13 +491,7 @@ def train(args):
 
             
 
-    # Ensure that the path for checkpointing and for images both exist
-    Path("Results/").mkdir(parents=True, exist_ok=True)
-    Path("Results/checkpoints/" + args.experiment_name + "/").mkdir(parents=True, exist_ok=True)
-    Path("Results/checkpoints/" + args.experiment_name + "/"+args.training_set_path.split("/")[-1]+"/").mkdir(parents=True, exist_ok=True)
-    Path("Results/images/metrics/").mkdir(parents=True, exist_ok=True)
-    Path("Results/images/histograms/").mkdir(parents=True, exist_ok=True)
-    Path("Results/images/keypoints/").mkdir(parents=True, exist_ok=True)
+
 
     # MARK: DATA
     #artifact_name = config[args.experiment_name]
@@ -489,7 +588,7 @@ def train(args):
         start_time = time.time()
 
         current_lr = sgd_optimizer.param_groups[0]["lr"]
-
+        current_weight_decay = sgd_optimizer.param_groups[0]['weight_decay']
         train_loss,train_stats,train_labels_original,train_labels_predicted,list_depth_map_train,list_label_name_train = train_epoch(slrt_model, train_loader, 
         cel_criterion, sgd_optimizer,device,epoch=epoch,args=args)
         
@@ -556,9 +655,10 @@ def train(args):
         if val_acc is not None:
             previous_val_acc = val_acc
         if val_loader:
+            current_weight_decay = sgd_optimizer.param_groups[0]['weight_decay']
             log_values = {
                 'current_lr':current_lr,
-                'current_weight_decay':sgd_optimizer.param_groups[0]['weight_decay'],
+                'current_weight_decay':current_weight_decay,
                 'train_acc': train_acc,
                 'train_loss': train_loss,
                 'val_acc': previous_val_acc,
@@ -600,15 +700,23 @@ def train(args):
             
         # Save checkpoints if they are best in the current subset
         if args.save_checkpoints:
-            model_save_folder_path = os.path.join("Results/checkpoints/" + args.experiment_name,args.training_set_path.split("/")[-1])
+            
+            #model_save_folder_path = os.path.join("Results/checkpoints/" + args.experiment_name,args.models_random_name,args.training_set_path.split("/")[-1])
+            model_save_folder_path = os.path.join("Results/checkpoints/" + args.experiment_name,
+            args.training_set_path.split("/")[-1].split(".")[0],
+            args.models_random_name)
+            
+
             if args.use_wandb:
                 torch.save({
                     'epoch': epoch,
                     'model_state_dict': slrt_model.state_dict(),
                     'optimizer_state_dict': sgd_optimizer.state_dict(),
                     'loss': train_loss,
+                    'current_lr':current_lr,
+                    "lr_scheduler": lr_scheduler.state_dict(),
 
-                    "lr": lr_scheduler.state_dict(),
+                    'current_weight_decay':current_weight_decay,
 
                     "wandb": save_artifact.WandBID(wandb.run.id).state_dict(),
                     "epoch": save_artifact.Epoch(epoch).state_dict(),
@@ -621,7 +729,10 @@ def train(args):
                     'optimizer_state_dict': sgd_optimizer.state_dict(),
                     'loss': train_loss,
 
-                    "lr": lr_scheduler.state_dict(),
+                    'current_lr':current_lr,
+                    "lr_scheduler": lr_scheduler.state_dict(),
+
+                    'current_weight_decay':current_weight_decay,
 
                 }, model_save_folder_path + "/checkpoint_model.pth")
 
@@ -631,6 +742,9 @@ def train(args):
             if val_f1_weighted > top_val_f1_weighted:
                 top_val_f1_weighted = val_f1_weighted
 
+                print("Saving best model!")
+                print(model_save_folder_path)
+
                 if args.use_wandb:
                     torch.save({
                         'epoch': epoch,
@@ -638,7 +752,10 @@ def train(args):
                         'optimizer_state_dict': sgd_optimizer.state_dict(),
                         'loss': train_loss,
 
-                        "lr": lr_scheduler.state_dict(),
+                        'current_lr':current_lr,
+                        "lr_scheduler": lr_scheduler.state_dict(),
+
+                        'current_weight_decay':current_weight_decay,
 
                         "wandb": save_artifact.WandBID(wandb.run.id).state_dict(),
                         "epoch": save_artifact.Epoch(epoch).state_dict(),
@@ -652,7 +769,10 @@ def train(args):
                         'optimizer_state_dict': sgd_optimizer.state_dict(),
                         'loss': train_loss,
 
-                        "lr": lr_scheduler.state_dict(),
+                        'current_lr':current_lr,
+                        "lr_scheduler": lr_scheduler.state_dict(),
+
+                        'current_weight_decay':current_weight_decay,
 
                     }, model_save_folder_path + "/checkpoint_best_model.pth")
                 
@@ -683,7 +803,7 @@ def train(args):
             if top_val_f1_weighted!= top_val_f1_weighted_before:
                 top_val_f1_weighted_before = top_val_f1_weighted
                 if args.use_wandb:
-                    print("Sending artifact to wandb!")
+                    print("Sending artifact best model to wandb!")
                     artifact = wandb.Artifact(f'best-model_{run.id}.pth', type='model')
                     artifact.add_file(model_save_folder_path + "/checkpoint_best_model.pth")
                     run.log_artifact(artifact)
