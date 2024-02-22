@@ -2,7 +2,9 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [Good+SiAug fold-5-seed-95-rtx6000]
+    values: [Good+NoAug fold-5-seed-95-rtx6000]
+  #models_random_name:
+  #  values: [sin_congelar_pesos_xyz1] # se omite porque esto sirve para que tome los pesos del modelo anterior
   training_set_path:
     values: [
     "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5"]
@@ -23,13 +25,13 @@ parameters:
   num_layers_2:
     values: [2] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
   dim_feedforward_encoder:
-    values: [128]
+    values: [8]
   dim_feedforward_decoder:
-    values: [64,32,512,1024,1280,2048] #
+    values: [128,16,64,512] #64,2048
   device:
     values: [0]
   augmentation:
-    values: [1]
+    values: [0]
   factor_aug:
     values: [2]
   batch_name:
@@ -60,9 +62,15 @@ parameters:
     values: [1]
   hidden_dim:
     values : [108] # obligado 108 por tener 54*2 puntos
+  use_spoter2:
+    values : [1]
+  norm_first:
+    values : [1]
+  not_requires_grad_n_layers:
+    values : [1]
 
 #python train.py --device=0 --dim_feedforward=128 --lr=0.0001 --num_heads=54 --num_layers_1=32 --num_layers_2=256 --sweep=1 --augmentation=1
 
-#python train.py --augmentation=0 --batch_name=mean_1 --batch_size=64 --data_fold=5 --data_seed=1 --device=0 --dim_feedforward=8 --dropout=0.3 --early_stopping_patience=500 --epochs=1000 "--experiment_name=original +aug fold-5-seed-123-p100" --factor_aug=2 --gaussian_std=0.001 --label_smoothing=0.1 --loss_weighted_factor=2 --lr=0.0001 --num_heads=3 --num_layers_1=3 --num_layers_2=2 --optimizer=adam --scheduler=plateu --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_123_klod_1-Train.hdf5 --use_wandb=0 --validation_set_path= --weight_decay=0.0001 --weight_decay_dynamic=1 --hidden_dim=108
+#2024-02-22 03:31:24,067 - wandb.wandb_agent - INFO - About to run command: /usr/bin/env python train.py --augmentation=0 --batch_name=mean_1 --batch_size=64 --data_fold=5 --data_seed=95 --device=0 --dim_feedforward_decoder=1024 --dim_feedforward_encoder=256 --dropout=0.3 --early_stopping_patience=1000 --epochs=20000 "--experiment_name=Good+NoAug fold-5-seed-95-rtx6000" --factor_aug=2 --gaussian_std=0.001 --hidden_dim=108 --label_smoothing=0.1 --loss_weighted_factor=2 --lr=0.0001 --models_random_name=sin_congelar_pesos_xyz1 --norm_first=1 --not_requires_grad_n_layers=1 --num_heads=2 --num_layers_1=3 --num_layers_2=2 --optimizer=adam --scheduler=plateu --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --use_spoter2=1 --use_wandb=1 --validation_set_path= --weight_decay=0.0001 --weight_decay_dynamic=0
 
-#P100
+#RTX60000
