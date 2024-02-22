@@ -474,9 +474,6 @@ def train(args):
 
     # Construct the other modules
     
-
-    
-
     lr_scheduler = None
 
     if args.scheduler == 'steplr':
