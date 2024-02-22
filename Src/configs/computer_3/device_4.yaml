@@ -73,6 +73,6 @@ parameters:
 
 #2024-02-22 03:31:24,067 - wandb.wandb_agent - INFO - About to run command: /usr/bin/env python train.py --augmentation=0 --batch_name=mean_1 --batch_size=64 --data_fold=5 --data_seed=95 --device=0 --dim_feedforward_decoder=1024 --dim_feedforward_encoder=256 --dropout=0.3 --early_stopping_patience=1000 --epochs=20000 "--experiment_name=Good+NoAug fold-5-seed-95-rtx6000" --factor_aug=2 --gaussian_std=0.001 --hidden_dim=108 --label_smoothing=0.1 --loss_weighted_factor=2 --lr=0.0001 --models_random_name=sin_congelar_pesos_xyz1 --norm_first=1 --not_requires_grad_n_layers=1 --num_heads=2 --num_layers_1=3 --num_layers_2=2 --optimizer=adam --scheduler=plateu --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --use_spoter2=1 --use_wandb=1 --validation_set_path= --weight_decay=0.0001 --weight_decay_dynamic=0
 
-#RTX60000
+#p100
 
 #pruebas en la sesion 4
