@@ -31,7 +31,7 @@ parameters:
   device:
     values: [1]
   augmentation:
-    values: [0,1]
+    values: [0]
   factor_aug:
     values: [2]
   batch_name:

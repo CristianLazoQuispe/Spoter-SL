@@ -254,10 +254,6 @@ def train(args):
             key_parts.append(f"{k}_{v}")
 
         key = "".join(key_parts) 
-
-        # Generar string aleatorio
-        suffix = ''.join(random.choice(string.ascii_letters + string.digits) for i in range(5))
-
         # Crear hash final
         hash_object = hashlib.md5(key.encode())
         models_random_name = hash_object.hexdigest()[:8]
