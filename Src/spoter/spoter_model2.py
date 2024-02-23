@@ -1,122 +1,50 @@
-import copy
 import torch
-import warnings
-from typing import Optional, Any, Union, Callable
-from torch import Tensor
-
 import torch.nn as nn
-
-def _get_clones(mod, n):
-    return nn.ModuleList([copy.deepcopy(mod) for _ in range(n)])
-
-
-class SPOTERTransformerDecoderLayer2(nn.TransformerDecoderLayer):
-    """
-    Edited TransformerDecoderLayer implementation omitting the redundant self-attention operation as opposed to the
-    standard implementation.
-    """
-
-    def __init__(self, d_model, nhead, dim_feedforward, dropout, activation,norm_first):
-        super(SPOTERTransformerDecoderLayer2, self).__init__(d_model, nhead, dim_feedforward, dropout, activation,norm_first)
-
-        #del self.self_attn
-
-    def forward(self, tgt: torch.Tensor, memory: torch.Tensor, tgt_mask: Optional[torch.Tensor] = None,
-                memory_mask: Optional[torch.Tensor] = None, tgt_key_padding_mask: Optional[torch.Tensor] = None,
-                memory_key_padding_mask: Optional[torch.Tensor] = None,
-                tgt_is_causal: bool = False,
-                memory_is_causal: bool = False) -> torch.Tensor:
-
-        x = tgt
-        if self.norm_first:
-            x = x + self._sa_block(self.norm1(x), tgt_mask, tgt_key_padding_mask,tgt_is_causal)#x + self.dropout1(self.norm1(tgt))
-            x = x + self._mha_block(self.norm2(x), memory, memory_mask, memory_key_padding_mask,memory_is_causal)
-            x = x + self._ff_block(self.norm3(x))
-        else:
-            x = self.norm1(x + self._sa_block(x, tgt_mask, tgt_key_padding_mask,tgt_is_causal))#self.norm1(x + self.dropout1(tgt))
-            x = self.norm2(x + self._mha_block(x, memory, memory_mask, memory_key_padding_mask,memory_is_causal))
-            x = self.norm3(x + self._ff_block(x))
-
-        return x
-
-
-    # self-attention block
-    def _sa_block(self, x: Tensor,
-                  attn_mask: Optional[Tensor], key_padding_mask: Optional[Tensor], is_causal: bool = False) -> Tensor:
-        x = self.self_attn(x, x, x,
-                           attn_mask=attn_mask,
-                           key_padding_mask=key_padding_mask,
-                           is_causal=is_causal,
-                           need_weights=False)[0]
-        return self.dropout1(x)
-
-    # multihead attention block
-    def _mha_block(self, x: Tensor, mem: Tensor,
-                   attn_mask: Optional[Tensor], key_padding_mask: Optional[Tensor], is_causal: bool = False) -> Tensor:
-        
-        x = self.multihead_attn(x, mem, mem,
-                                attn_mask=attn_mask,
-                                key_padding_mask=key_padding_mask,
-                                is_causal=is_causal,
-                                need_weights=False)[0]
-        return self.dropout2(x)
-
-    # feed forward block
-    def _ff_block(self, x: Tensor) -> Tensor:
-        x = self.linear2(self.dropout(self.activation(self.linear1(x))))
-        return self.dropout3(x)
-
-
 
 class SPOTER2(nn.Module):
     """
-    Implementation of the SPOTER (Sign POse-based TransformER) architecture for sign language recognition from sequence
-    of skeletal data.
+    Implementación del encoder SPOTER (Sign POse-based TransformER) para reconocimiento de lenguaje de señas a partir de datos esqueléticos.
     """
 
     def __init__(self, num_classes, num_rows=64,hidden_dim=108, num_heads=9, num_layers_1=6, num_layers_2=6, 
                             dim_feedforward_encoder=64,
                             dim_feedforward_decoder=256,dropout=0.3,norm_first=False,not_requires_grad_n_layers=False):
-        super().__init__()
 
-        self.hidden_dim  = hidden_dim
-        self.pos         = nn.Parameter(torch.rand(1,1, hidden_dim))
+        super(SPOTER2, self).__init__()
+
+        self.hidden_dim = hidden_dim
+        self.pos = nn.Parameter(torch.rand(1, 1, hidden_dim))
         self.class_query = nn.Parameter(torch.rand(1, hidden_dim))
-        print("self.pos",self.pos)
-        print("self.pos",self.pos.shape)
-        #https://pytorch.org/docs/stable/generated/torch.nn.Transformer.html
-        self.transformer  = nn.Transformer(d_model=hidden_dim, nhead =num_heads,
-        num_encoder_layers= num_layers_1, 
-        num_decoder_layers= num_layers_2,
-        dim_feedforward = dim_feedforward_encoder,
-        dropout=dropout,
-        norm_first = norm_first)
+
+        self.encoder = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model=hidden_dim,
+                nhead=num_heads,
+                dim_feedforward=dim_feedforward_encoder,
+                dropout=dropout,
+                norm_first = norm_first),
+            num_layers=num_layers_1
+        )
 
         self.linear_class = nn.Linear(hidden_dim, num_classes)
-
-        custom_decoder_layer = SPOTERTransformerDecoderLayer2(self.transformer.d_model, self.transformer.nhead,
-                                                             dim_feedforward_decoder, dropout=dropout, activation="relu",norm_first=norm_first)
-
-        self.dropout1 = nn.Dropout(dropout)
         self.act_relu = nn.ReLU()
-        self.transformer.decoder.layers = _get_clones(custom_decoder_layer, self.transformer.decoder.num_layers)
-        
-        if not not_requires_grad_n_layers:
-            print("CONGELAR CAPAS")
-            print("CONGELAR CAPAS")
-            print("CONGELAR CAPAS")
-            for param in self.transformer.decoder.layers[:3].parameters():
-                param.requires_grad = False # Congelar capas
-            
-    def forward(self, inputs,show=False):
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, inputs):
         h = torch.unsqueeze(inputs.flatten(start_dim=1), 1).float()
         aux = self.pos + h
-        h = self.transformer(aux, self.class_query.unsqueeze(0)).transpose(0, 1)
+        h = self.encoder(aux)
+        h = h.mean(dim=0) 
         h = self.act_relu(h)
-        h = self.dropout1(h)
+        h = self.dropout(h)
         res = self.linear_class(h)
         return res
 
+#python train.py --augmentation=0 --batch_name=mean_1 --batch_size=64 --data_fold=5 --data_seed=95 --device=0 --dim_feedforward_decoder=256 --dim_feedforward_encoder=256 --dropout=0.3 --early_stopping_patience=1000 --epochs=10000 "--experiment_name=NewSpoter fold-5-seed-95-p100" --factor_aug=2 --gaussian_std=0.001 --hidden_dim=108 --label_smoothing=0.1 --loss_weighted_factor=2 --lr=0.0001 --norm_first=0 --not_requires_grad_n_layers=1 --num_heads=2 --num_layers_1=3 --num_layers_2=2 --optimizer=adam --scheduler=plateu --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --use_spoter2=2 --use_wandb=1 --validation_set_path= --weight_decay=0.0001 --weight_decay_dynamic=0
 
-if __name__ == "__main__":
-    pass
+
+ #h : torch.Size([11, 1, 108])
+ #aux : torch.Size([11, 1, 108])
+ #h encoder : torch.Size([11, 1, 108])
+ #h mean : torch.Size([1, 108])
+ #h : torch.Size([1, 108])

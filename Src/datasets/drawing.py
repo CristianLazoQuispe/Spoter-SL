@@ -1,6 +1,6 @@
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
-from tqdm.auto import tqdm
+import tqdm
 import imageio
 import pandas as pd
 import numpy as np
@@ -155,35 +155,38 @@ class drawing:
         
         list_images = []
         
-        for id_frame in tqdm(range(max_frames)):
-            fig, axs = plt.subplots(5, 5, figsize=(20, 20))
-            for i in range(5):
-                for j in range(5):
-                    depth_map = list_depth_map[i*5 + j] 
-                    label_name = list_label_name[i*5 + j] 
-        
-                    if id_frame<depth_map.shape[0]:
-                        kp_frame = depth_map[id_frame]+0.5
-                        img = self.draw_lines(kp_frame,text_left=label_name,text_right=str(id_frame))
-                    else:
-                        kp_frame = depth_map[-1]+0.5
-                        id_frame_new = depth_map.shape[0]-1
-                        img = self.draw_lines(kp_frame,text_left=label_name,text_right=str(id_frame_new)+"_last")
-                        #img= np.zeros((256,256, 3), np.uint8)
-                        
-                    axs[i, j].imshow(img)
-                    axs[i, j].axis('off')
-            plt.tight_layout() 
-            try:
-                selected_aug = random.randrange(200)
-                plt.savefig(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
-                plt.close(fig)
-                img = plt.imread(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')    
-                time.sleep(0.001) 
-                os.remove(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
-                list_images.append(img) 
-            except:
-                pass
+        with tqdm.tqdm(range(max_frames), total=max_frames, desc='Drawing:',bar_format='{desc:<18.23}{percentage:3.0f}%|{bar:20}{r_bar}') as tepoch:
+            #for id_frame in tqdm(range(max_frames)):
+            for id_frame in tepoch:
+                fig, axs = plt.subplots(5, 5, figsize=(20, 20))
+                for i in range(5):
+                    for j in range(5):
+                        depth_map = list_depth_map[i*5 + j] 
+                        label_name = list_label_name[i*5 + j] 
+            
+                        if id_frame<depth_map.shape[0]:
+                            kp_frame = depth_map[id_frame]+0.5
+                            img = self.draw_lines(kp_frame,text_left=label_name,text_right=str(id_frame))
+                        else:
+                            kp_frame = depth_map[-1]+0.5
+                            id_frame_new = depth_map.shape[0]-1
+                            img = self.draw_lines(kp_frame,text_left=label_name,text_right=str(id_frame_new)+"_last")
+                            #img= np.zeros((256,256, 3), np.uint8)
+                            
+                        axs[i, j].imshow(img)
+                        axs[i, j].axis('off')
+                plt.tight_layout() 
+                try:
+                    selected_aug = random.randrange(200)
+                    plt.savefig(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
+                    plt.close(fig)
+                    img = plt.imread(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')    
+                    time.sleep(0.001) 
+                    os.remove(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
+                    list_images.append(img) 
+                except:
+                    pass
+
         filename = ''
         if save_gif:
             
@@ -195,6 +198,7 @@ class drawing:
 
             filename = self.save_video(list_images,suffix=suffix)
         return list_images, f'Results/images/keypoints/matrix_25_gloss_{suffix}.gif'
+
     def get_video_frames_25_glosses(self,list_depth_map_original,list_label_name_original,suffix='train',save_gif = True):
         
         list_depth_map = []
@@ -212,35 +216,39 @@ class drawing:
         
         list_images = []
         
-        for id_frame in tqdm(range(max_frames)):
-            fig, axs = plt.subplots(5, 5, figsize=(20, 20))
-            for i in range(5):
-                for j in range(5):
-                    depth_map = list_depth_map[i*5 + j] 
-                    label_name = list_label_name[i*5 + j] 
-        
-                    if id_frame<depth_map.shape[0]:
-                        kp_frame = depth_map[id_frame]+0.5
-                        img = self.draw_lines(kp_frame,text_left=label_name,text_right=str(id_frame))
-                    else:
-                        kp_frame = depth_map[-1]+0.5
-                        id_frame_new = depth_map.shape[0]-1
-                        img = self.draw_lines(kp_frame,text_left=label_name,text_right=str(id_frame_new)+"_last")
-                        #img= np.zeros((256,256, 3), np.uint8)
-                        
-                    axs[i, j].imshow(img)
-                    axs[i, j].axis('off')
-            plt.tight_layout() 
-            try:
-                selected_aug = random.randrange(200)
-                plt.savefig(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
-                plt.close(fig)
-                img = plt.imread(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
-                time.sleep(0.001) 
-                os.remove(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
-                list_images.append(img) 
-            except:
-                pass
+        with tqdm.tqdm(range(max_frames), total=max_frames, desc='Drawing:',bar_format='{desc:<18.23}{percentage:3.0f}%|{bar:20}{r_bar}') as tepoch:
+            #for id_frame in tqdm(range(max_frames)):
+            for id_frame in tepoch:
+
+                fig, axs = plt.subplots(5, 5, figsize=(20, 20))
+                for i in range(5):
+                    for j in range(5):
+                        depth_map = list_depth_map[i*5 + j] 
+                        label_name = list_label_name[i*5 + j] 
+            
+                        if id_frame<depth_map.shape[0]:
+                            kp_frame = depth_map[id_frame]+0.5
+                            img = self.draw_lines(kp_frame,text_left=label_name,text_right=str(id_frame))
+                        else:
+                            kp_frame = depth_map[-1]+0.5
+                            id_frame_new = depth_map.shape[0]-1
+                            img = self.draw_lines(kp_frame,text_left=label_name,text_right=str(id_frame_new)+"_last")
+                            #img= np.zeros((256,256, 3), np.uint8)
+                            
+                        axs[i, j].imshow(img)
+                        axs[i, j].axis('off')
+                plt.tight_layout() 
+                try:
+                    selected_aug = random.randrange(200)
+                    plt.savefig(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
+                    plt.close(fig)
+                    img = plt.imread(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
+                    time.sleep(0.001) 
+                    os.remove(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
+                    list_images.append(img) 
+                except:
+                    pass
+
         filename = ''
         if save_gif:
             

@@ -59,11 +59,11 @@ parameters:
   gaussian_std:
     values: [0.001]
   use_wandb:
-    values: [1]
+    values: [0]
   hidden_dim:
     values : [108] # obligado 108 por tener 54*2 puntos
   use_spoter2:
-    values : [1]
+    values : [2]
   norm_first:
     values : [0,1]
   not_requires_grad_n_layers:

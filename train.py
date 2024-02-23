@@ -25,6 +25,7 @@ from Src.datasets.SpoterDataLoader import SpoterDataLoader
 from Src.datasets.drawing import drawing
 
 from Src.spoter.spoter_model import SPOTER
+from Src.spoter.spoter_model1 import SPOTER1
 from Src.spoter.spoter_model2 import SPOTER2
 from Src.spoter.utils import train_epoch, evaluate, generate_csv_result, generate_csv_accuracy
 from Src.spoter.gaussian_noise import GaussianNoise
@@ -326,8 +327,18 @@ def train(args):
 
         path_model = model_save_folder_path+'/checkpoint_model.pth'
         print("path_model:",path_model)
-        if args.use_spoter2:
-            print("USING SPOTER Version 2")
+        if args.use_spoter2 ==1:
+            print("USING SPOTER Version 2 + encoder + decoder con multiatten and atten")
+            slrt_model = SPOTER1(num_classes=args.num_classes, num_rows=args.num_rows,
+                                hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
+                                num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
+                                dim_feedforward_encoder=args.dim_feedforward_encoder,
+                                dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout,
+                                norm_first = bool(args.norm_first),
+                                not_requires_grad_n_layers = bool(args.not_requires_grad_n_layers))
+
+        if args.use_spoter2 ==2:
+            print("USING SPOTER Version 3 + solo encoder")
             slrt_model = SPOTER2(num_classes=args.num_classes, num_rows=args.num_rows,
                                 hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
                                 num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
@@ -583,7 +594,9 @@ def train(args):
     amp = True
     grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
 
-    step = run.summary.get("_step")
+    step = None
+    if args.use_wandb:
+        step = run.summary.get("_step")
     
     step = 0 if step is None else step+1
 
