@@ -48,3 +48,5 @@ class SPOTER2(nn.Module):
  #h encoder : torch.Size([11, 1, 108])
  #h mean : torch.Size([1, 108])
  #h : torch.Size([1, 108])
+
+#python train.py --augmentation=0 --batch_name=mean_1 --batch_size=64 --data_fold=5 --data_seed=95 --device=0 --dim_feedforward_decoder=256 --dim_feedforward_encoder=16 --dropout=0.3 --early_stopping_patience=1000 --epochs=10000 "--experiment_name=NewSpoter fold-5-seed-95-p100" --factor_aug=2 --gaussian_std=0.001 --hidden_dim=108 --label_smoothing=0.1 --loss_weighted_factor=2 --lr=0.0001 --norm_first=0 --not_requires_grad_n_layers=1 --num_heads=9 --num_layers_1=6 --num_layers_2=2 --optimizer=adam --scheduler=plateu --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --use_spoter2=2 --use_wandb=1 --validation_set_path= --weight_decay=0.0001 --weight_decay_dynamic=0
