@@ -337,7 +337,7 @@ def train(args):
                                 norm_first = bool(args.norm_first),
                                 not_requires_grad_n_layers = bool(args.not_requires_grad_n_layers))
 
-        if args.use_spoter2 ==2:
+        elif args.use_spoter2 ==2:
             print("USING SPOTER Version 3 + solo encoder")
             slrt_model = SPOTER2(num_classes=args.num_classes, num_rows=args.num_rows,
                                 hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
@@ -346,6 +346,18 @@ def train(args):
                                 dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout,
                                 norm_first = bool(args.norm_first),
                                 not_requires_grad_n_layers = bool(args.not_requires_grad_n_layers))
+
+        elif args.use_spoter2 ==3:
+            print("USING SPOTER Version 4 + solo encoder + mlp")
+            slrt_model = SPOTER2(num_classes=args.num_classes, num_rows=args.num_rows,
+                                hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
+                                num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
+                                dim_feedforward_encoder=args.dim_feedforward_encoder,
+                                dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout,
+                                norm_first = bool(args.norm_first),
+                                not_requires_grad_n_layers = bool(args.not_requires_grad_n_layers),
+                                has_mlp=True)
+
 
         else:
             slrt_model = SPOTER(num_classes=args.num_classes, num_rows=args.num_rows,
