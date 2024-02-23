@@ -181,8 +181,8 @@ class SPOTERTransformerEncoder(nn.TransformerEncoder):
         return output
 
 class SPOTERTransformerDecoder(nn.TransformerDecoder):
-    def __init__(self, d_model,decoder_layer, num_layers):
-        super(SPOTERTransformerDecoder, self).__init__(decoder_layer, num_layers)
+    def __init__(self, d_model,decoder_layer, num_layers, norm=None):
+        super(SPOTERTransformerDecoder, self).__init__(decoder_layer, num_layers,norm)
 
         self.layer_norm = nn.LayerNorm(d_model, eps= 1e-5, bias=True)
 
@@ -220,10 +220,11 @@ class SPOTERTransformerDecoderLayer(nn.TransformerDecoderLayer):
     standard implementation.
     """
 
-    def __init__(self, d_model, nhead, dim_feedforward, dropout, activation,norm_first):
-        super(SPOTERTransformerDecoderLayer, self).__init__(d_model, nhead, dim_feedforward, dropout, activation,norm_first)
+    def __init__(self, d_model, nhead, dim_feedforward, dropout, activation):
+        super(SPOTERTransformerDecoderLayer, self).__init__(d_model, nhead, dim_feedforward, dropout, activation)
 
-        del self.self_attn
+        #del self.self_attn
+        self.norm3 = nn.LayerNorm(d_model, eps= 1e-5, bias=True)
 
     def forward(self, data: Tuple[Tensor, Tensor], memory: torch.Tensor, tgt_mask: Optional[torch.Tensor] = None,
                 memory_mask: Optional[torch.Tensor] = None, tgt_key_padding_mask: Optional[torch.Tensor] = None,
@@ -234,16 +235,31 @@ class SPOTERTransformerDecoderLayer(nn.TransformerDecoderLayer):
         x, res = data
 
         xr  = x
-        x   = self._mha_block(x, memory, memory_mask, memory_key_padding_mask,memory_is_causal)
+        #print("x : ",x.shape) # es None ,"tgt_key_padding_mask:",tgt_key_padding_mask.shape
+        #print("original  :",x[0,0,:5].tolist())
+        x   = self._sa_block(x, tgt_mask, tgt_key_padding_mask,tgt_is_causal)#x + self.dropout1(self.norm1(tgt))
+        #print("after _sa_block:",x[0,0,:5].tolist())
         res = res +x
         x   = self.norm1(x + xr)
         xr  = x
+        x   = self._mha_block(x, memory, memory_mask, memory_key_padding_mask,memory_is_causal)
+        res = res +x
+        x   = self.norm2(x + xr)
+        xr  = x
         x   = self._ff_block(x)
         res = res + x
-        x   = self.norm2(x + xr)
+        x   = self.norm3(x + xr)
 
         return x, res
-
+    # self-attention block
+    def _sa_block(self, x: Tensor,
+                  attn_mask: Optional[Tensor], key_padding_mask: Optional[Tensor], is_causal: bool = False) -> Tensor:
+        x = self.self_attn(x, x, x,
+                           attn_mask=attn_mask,
+                           key_padding_mask=key_padding_mask,
+                           is_causal=is_causal,
+                           need_weights=False)[0]
+        return self.dropout1(x)
     # multihead attention block
     def _mha_block(self, x: Tensor, mem: Tensor,
                    attn_mask: Optional[Tensor], key_padding_mask: Optional[Tensor], is_causal: bool = False) -> Tensor:
@@ -270,7 +286,7 @@ class SPOTER4(nn.Module):
     def __init__(self, num_classes, num_rows=64,hidden_dim=108, num_heads=9, num_layers_1=6, num_layers_2=6, 
                             dim_feedforward_encoder=64,
                             dim_feedforward_decoder=256,dropout=0.3,norm_first=False,not_requires_grad_n_layers=False):
-        super(SPOTER1).__init__()
+        super().__init__()
 
         self.hidden_dim  = hidden_dim
         self.pos         = nn.Parameter(torch.rand(1,1, hidden_dim))
@@ -291,7 +307,9 @@ class SPOTER4(nn.Module):
         self.dropout1 = nn.Dropout(dropout)
         self.act_relu = nn.ReLU()
 
-        self.transformer.encoder = = SPOTERTransformerEncoder(
+        self.layer_norm_encoder = nn.LayerNorm(hidden_dim, eps= 1e-5, bias=True)
+
+        self.transformer.encoder = SPOTERTransformerEncoder(
             d_model=hidden_dim,
             encoder_layer = SPOTERTransformerEncoderLayer(
                 d_model=hidden_dim,
@@ -299,18 +317,21 @@ class SPOTER4(nn.Module):
                 dim_feedforward=dim_feedforward_encoder,
                 dropout=dropout, 
                 activation="relu"),
-            num_layers=num_layers_1
+            num_layers=num_layers_1,
+            norm = self.layer_norm_encoder
         )
+        self.layer_norm_decoder = nn.LayerNorm(hidden_dim, eps= 1e-5, bias=True)
 
-        self.transformer.decoder = = SPOTERTransformerDecoder(
+        self.transformer.decoder = SPOTERTransformerDecoder(
             d_model=hidden_dim,
-            encoder_layer = SPOTERTransformerDecoderLayer(
+            decoder_layer = SPOTERTransformerDecoderLayer(
                 d_model=hidden_dim,
                 nhead=num_heads,
                 dim_feedforward=dim_feedforward_encoder,
                 dropout=dropout, 
                 activation="relu"),
-            num_layers=num_layers_2
+            num_layers=num_layers_2,
+            norm = self.layer_norm_decoder
         )
                      
     def forward(self, inputs,show=False):
@@ -328,4 +349,6 @@ if __name__ == "__main__":
 
 #python train.py --augmentation=0 --batch_name=mean_1 --batch_size=64 --data_fold=5 --data_seed=95 --device=0 --dim_feedforward_decoder=256 --dim_feedforward_encoder=256 --dropout=0.3 --early_stopping_patience=1000 --epochs=10000 "--experiment_name=NewSpoter fold-5-seed-95-p100" --factor_aug=2 --gaussian_std=0.001 --hidden_dim=108 --label_smoothing=0.1 --loss_weighted_factor=2 --lr=0.0001 --norm_first=0 --not_requires_grad_n_layers=1 --num_heads=2 --num_layers_1=3 --num_layers_2=2 --optimizer=adam --scheduler=plateu --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --use_spoter2=4 --use_wandb=1 --validation_set_path= --weight_decay=0.0001 --weight_decay_dynamic=0
 
-#python train.py --augmentation=0 --batch_name=mean_1 --batch_size=64 --data_fold=5 --data_seed=95 --device=0 --dim_feedforward_decoder=256 --dim_feedforward_encoder=1024 --dropout=0.3 --early_stopping_patience=1000 --epochs=10000 "--experiment_name=NewSpoter fold-5-seed-95-p100" --factor_aug=2 --gaussian_std=0.001 --hidden_dim=108 --label_smoothing=0.1 --loss_weighted_factor=2 --lr=0.0001 --norm_first=0 --not_requires_grad_n_layers=1 --num_heads=9 --num_layers_1=6 --num_layers_2=2 --optimizer=adam --scheduler=plateu --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --use_spoter2=4 --use_wandb=1 --validation_set_path= --weight_decay=0.0001 --weight_decay_dynamic=0
+#python train.py --augmentation=0 --batch_name=mean_1 --batch_size=64 --data_fold=5 --data_seed=95 --device=0 --dim_feedforward_decoder=1024 --dim_feedforward_encoder=256 --dropout=0.3 --early_stopping_patience=1000 --epochs=10000 "--experiment_name=NewSpoter fold-5-seed-95-p100" --factor_aug=2 --gaussian_std=0.001 --hidden_dim=108 --label_smoothing=0.1 --loss_weighted_factor=2 --lr=0.0001 --norm_first=0 --not_requires_grad_n_layers=1 --num_heads=2 --num_layers_1=3 --num_layers_2=2 --optimizer=adam --scheduler=plateu --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --use_spoter2=5 --use_wandb=0 --validation_set_path= --weight_decay=0.0001 --weight_decay_dynamic=0
+
+#python train.py --augmentation=0 --batch_name=mean_1 --batch_size=64 --data_fold=5 --data_seed=95 --device=0 --dim_feedforward_decoder=1024 --dim_feedforward_encoder=256 --dropout=0.3 --early_stopping_patience=1000 --epochs=10000 "--experiment_name=NewSpoter fold-5-seed-95-p100" --factor_aug=2 --gaussian_std=0.001 --hidden_dim=108 --label_smoothing=0.1 --loss_weighted_factor=2 --lr=0.0001 --norm_first=0 --not_requires_grad_n_layers=1 --num_heads=2 --num_layers_1=3 --num_layers_2=2 --optimizer=adam --scheduler=plateu --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --use_spoter2=5 --use_wandb=1 --validation_set_path= --weight_decay=0.0001 --weight_decay_dynamic=0

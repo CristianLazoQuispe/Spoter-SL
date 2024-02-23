@@ -28,6 +28,7 @@ from Src.spoter.spoter_model import SPOTER
 from Src.spoter.spoter_model1 import SPOTER1
 from Src.spoter.spoter_model2 import SPOTER2
 from Src.spoter.spoter_model3 import SPOTER3
+from Src.spoter.spoter_model4 import SPOTER4
 from Src.spoter.utils import train_epoch, evaluate, generate_csv_result, generate_csv_accuracy
 from Src.spoter.gaussian_noise import GaussianNoise
 from Src.spoter.gpu import configurar_cuda_visible
@@ -370,6 +371,16 @@ def train(args):
                                 not_requires_grad_n_layers = bool(args.not_requires_grad_n_layers),
                                 has_mlp=True)
 
+        elif args.use_spoter2 ==5:
+            print("USING SPOTER Version 6 +  encoder ResiDual + decoder ResiDual")
+            slrt_model = SPOTER4(num_classes=args.num_classes, num_rows=args.num_rows,
+                                hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
+                                num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
+                                dim_feedforward_encoder=args.dim_feedforward_encoder,
+                                dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout,
+                                norm_first = bool(args.norm_first),
+                                not_requires_grad_n_layers = bool(args.not_requires_grad_n_layers),
+                                )
         else:
             slrt_model = SPOTER(num_classes=args.num_classes, num_rows=args.num_rows,
                                 hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
@@ -380,7 +391,8 @@ def train(args):
         if os.path.exists(path_model):
             print("RESUME MODEL : Load weights")
             checkpoint = torch.load(path_model)
-            print("wandb id:",checkpoint["wandb"])
+            if args.use_wandb:
+                print("wandb id:",checkpoint["wandb"])
             #print("lr      :",checkpoint["lr"])
             print("epoch   :",checkpoint["epoch"])
             slrt_model.load_state_dict(checkpoint['model_state_dict'])
