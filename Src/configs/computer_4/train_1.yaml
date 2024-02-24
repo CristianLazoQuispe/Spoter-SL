@@ -25,9 +25,9 @@ parameters:
   dim_feedforward_decoder:
     values: [1024] #16-2-64
   device:
-    values: [1]
+    values: [0]
   augmentation:
-    values: [0,1]
+    values: [0]
   batch_size:
     values: [64]
   early_stopping_patience:
@@ -39,7 +39,7 @@ parameters:
   use_wandb:
     values: [1]
   model_name:
-    values : ['transformer_residual','encoder_residual_mlp']
+    values : ['encoder_mlp','encoder_residual']
 
 #'base_freeze','base','base_freeze_attn','base_attn','encoder','encoder_mlp','encoder_residual','encoder_residual_mlp','transformer_residual'
 

@@ -27,7 +27,7 @@ parameters:
   device:
     values: [0]
   augmentation:
-    values: [0,1]
+    values: [1]
   batch_size:
     values: [64]
   early_stopping_patience:
