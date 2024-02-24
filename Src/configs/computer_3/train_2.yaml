@@ -1,0 +1,48 @@
+program: train.py
+method: grid
+parameters:
+  experiment_name:
+    values: [Paper2024 fold-5-seed-95-rtx6000]
+  training_set_path:
+    values: [
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5"]
+  validation_set_path:
+    values: [""]
+  data_fold:
+    values: [5]
+  data_seed:
+    values: [95]
+  sweep:
+    values: [1]
+  num_heads:
+    values: [2] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
+  num_layers_1:
+    values: [3] # [64,12,8,6,4,2,1]
+  num_layers_2:
+    values: [2] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
+  dim_feedforward_encoder:
+    values: [256]
+  dim_feedforward_decoder:
+    values: [1024] #16-2-64
+  device:
+    values: [0]
+  augmentation:
+    values: [0,1]
+  batch_size:
+    values: [64]
+  early_stopping_patience:
+    values: [1000]
+  epochs:
+    values: [20000]
+  weight_decay_dynamic:
+    values: [0]
+  use_wandb:
+    values: [1]
+  model_name:
+    values : ['encoder']
+
+#'base_freeze','base','base_freeze_attn','base_attn','encoder','encoder_mlp','encoder_residual','encoder_residual_mlp','transformer_residual'
+
+#python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=0 --dim_feedforward_decoder=1024 --dim_feedforward_encoder=256 --early_stopping_patience=2000 --epochs=2 "--experiment_name=Paper2024 fold-5-seed-95-p100" --model_name=base --num_heads=9 --num_layers_1=6 --num_layers_2=6 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --use_wandb=0 --validation_set_path= --weight_decay_dynamic=0
+
+#python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=0 --dim_feedforward_decoder=32 --dim_feedforward_encoder=32 --early_stopping_patience=2000 --epochs=2 "--experiment_name=Paper2024 fold-5-seed-95-p100" --num_heads=3 --num_layers_1=1 --num_layers_2=1 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --use_wandb=1 --validation_set_path= --weight_decay_dynamic=0 --model_name=base_freeze_attn
