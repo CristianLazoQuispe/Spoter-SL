@@ -15,11 +15,11 @@ parameters:
   sweep:
     values: [1]
   num_heads:
-    values: [2] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
+    values: [9] #2 [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
   num_layers_1:
-    values: [3] # [64,12,8,6,4,2,1]
+    values: [6] #3 [64,12,8,6,4,2,1]
   num_layers_2:
-    values: [2] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
+    values: [6,12,18] #2 [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
   dim_feedforward_encoder:
     values: [256]
   dim_feedforward_decoder:
