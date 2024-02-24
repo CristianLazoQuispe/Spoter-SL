@@ -39,7 +39,7 @@ parameters:
   use_wandb:
     values: [1]
   model_name:
-    values : ['base_freeze','base','base_freeze_attn']
+    values : ['base_freeze_attn']
 
 #'base_freeze','base','base_freeze_attn','base_attn','encoder,'encoder_mlp','encoder_residual','encoder_residual_mlp','transformer_residual'
 

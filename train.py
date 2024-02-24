@@ -562,6 +562,9 @@ def train(args):
     print("epoch_start, args.epochs",epoch_start, args.epochs)
     print("epoch_start, args.epochs",epoch_start, args.epochs)
 
+    print("args.model_name",args.model_name)
+    print("args.script_run_model",args.script_run_model)
+
     epoch = epoch_start
     train_loss = np.inf
     current_lr = sgd_optimizer.param_groups[0]["lr"]
