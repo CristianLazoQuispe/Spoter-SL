@@ -9,14 +9,14 @@ def _get_clones(mod, n):
     return nn.ModuleList([copy.deepcopy(mod) for _ in range(n)])
 
 
-class SPOTERTransformerDecoderLayer(nn.TransformerDecoderLayer):
+class SPOTERTransformerDecoderLayerBase(nn.TransformerDecoderLayer):
     """
     Edited TransformerDecoderLayer implementation omitting the redundant self-attention operation as opposed to the
     standard implementation.
     """
 
     def __init__(self, d_model, nhead, dim_feedforward, dropout, activation):
-        super(SPOTERTransformerDecoderLayer, self).__init__(d_model, nhead, dim_feedforward, dropout, activation)
+        super(SPOTERTransformerDecoderLayerBase, self).__init__(d_model, nhead, dim_feedforward, dropout, activation)
 
         del self.self_attn
 
@@ -63,8 +63,8 @@ class SPOTER(nn.Module):
 
         self.linear_class = nn.Linear(hidden_dim, num_classes)
 
-        custom_decoder_layer = SPOTERTransformerDecoderLayer(self.transformer.d_model, self.transformer.nhead,
-                                                             dim_feedforward_decoder, dropout=dropout, activation="relu",norm_first=norm_first)
+        custom_decoder_layer = SPOTERTransformerDecoderLayerBase(self.transformer.d_model, self.transformer.nhead,
+                                                             dim_feedforward_decoder, dropout=dropout, activation="relu")
 
         self.dropout1 = nn.Dropout(dropout)
         self.act_relu = nn.ReLU()

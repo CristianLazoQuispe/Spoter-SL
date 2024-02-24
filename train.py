@@ -21,14 +21,15 @@ from Src.datasets.utils_split import __balance_val_split, __split_of_train_seque
 
 from Src.datasets.SpoterDataset import SpoterDataset
 from Src.datasets.SpoterDataLoader import SpoterDataLoader
-from Src.load_model import get_slrt_model
 from Src.datasets.drawing import drawing
 
 
+from Src.spoter.load_model import get_slrt_model
 from Src.spoter.utils import train_epoch, evaluate, generate_csv_result, generate_csv_accuracy
 from Src.spoter.gaussian_noise import GaussianNoise
 from Src.spoter.gpu import configurar_cuda_visible
 from Src.spoter.optimizer import dynamic_weight_decay
+
 import wandb
 from torch.nn.utils.rnn import pad_sequence
 from sklearn.metrics import f1_score
@@ -667,7 +668,7 @@ def train(args):
                     'current_weight_decay':current_weight_decay,
 
                     "wandb": save_artifact.WandBID(wandb.run.id).state_dict(),
-                    "wandb_step": step = run.summary.get("_step"),
+                    "wandb_step": run.summary.get("_step"),
                     "epoch": save_artifact.Epoch(epoch).state_dict(),
                     "metric_val_acc": save_artifact.Metric(previous_val_acc).state_dict()
                 }, model_save_folder_path + "/checkpoint_model.pth")
@@ -707,7 +708,7 @@ def train(args):
                         'current_weight_decay':current_weight_decay,
 
                         "wandb": save_artifact.WandBID(wandb.run.id).state_dict(),
-                        "wandb_step": step = run.summary.get("_step"),
+                        "wandb_step":  run.summary.get("_step"),
                         "epoch": save_artifact.Epoch(epoch).state_dict(),
                         "metric_val_acc": save_artifact.Metric(top_val_acc).state_dict()
 

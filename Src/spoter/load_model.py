@@ -105,6 +105,7 @@ def get_slrt_model(args):
 
     ############################### MODELOS BASE ##################################################
     elif  args.model_name== "base_freeze":
+        print("USING SPOTER  Base model + freeze")
         slrt_model = SPOTER(num_classes=args.num_classes, num_rows=args.num_rows,
                             hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
                             num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
@@ -115,6 +116,7 @@ def get_slrt_model(args):
         args.freeze_decoder_layers = 1
         args.has_mlp = None
     else:
+        print("USING SPOTER  Base model")
         slrt_model = SPOTER(num_classes=args.num_classes, num_rows=args.num_rows,
                             hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
                             num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
