@@ -168,6 +168,8 @@ def get_default_args():
     parser.add_argument("--early_stopping_patience", type=int, default=200, help="")
     parser.add_argument("--max_acc_difference", type=float, default=0.35, help="")
 
+    parser.add_argument("--script_run_model", type=str, default="", help="")
+
     # Checkpointing
     parser.add_argument("--save_checkpoints", type=bool, default=True,help="Determines whether to save weights checkpoints")
 
