@@ -41,27 +41,31 @@ def get_slrt_model(args):
         print("USING SPOTER encoder")
         slrt_model = SPOTER2(num_classes=args.num_classes, num_rows=args.num_rows,
                             hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
-                            num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
+                            num_layers_1=args.num_layers_1,  
                             dim_feedforward_encoder=args.dim_feedforward_encoder,
-                            dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout,
+                            dropout=args.dropout,
                             norm_first = False,
                             has_mlp=False)
         args.norm_first = 0
         args.freeze_decoder_layers = None
         args.has_mlp = 0
+        args.num_layers_2 = None
+        args.dim_feedforward_decoder = None
 
     elif args.model_name == "encoder_mlp":
         print("USING SPOTER encoder+mlp")
         slrt_model = SPOTER2(num_classes=args.num_classes, num_rows=args.num_rows,
                             hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
-                            num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
+                            num_layers_1=args.num_layers_1,
                             dim_feedforward_encoder=args.dim_feedforward_encoder,
-                            dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout,
+                            dropout=args.dropout,
                             norm_first = False,
                             has_mlp=True)
         args.norm_first = 0
         args.freeze_decoder_layers = None
         args.has_mlp = 1
+        args.num_layers_2 = None
+        args.dim_feedforward_decoder = None
 
     ############################### MODELOS Encoder with ResiDual Connections ##################################################
     #https://arxiv.org/abs/2304.14802
@@ -69,26 +73,29 @@ def get_slrt_model(args):
         print("USING SPOTER Encoder+ResiDual")
         slrt_model = SPOTER3(num_classes=args.num_classes, num_rows=args.num_rows,
                             hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
-                            num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
+                            num_layers_1=args.num_layers_1,
                             dim_feedforward_encoder=args.dim_feedforward_encoder,
-                            dim_feedforward_decoder=args.dim_feedforward_decoder,
                             dropout=args.dropout,
                             has_mlp=False)
         args.norm_first = None
         args.freeze_decoder_layers =None
         args.has_mlp = 0
+        args.num_layers_2 = None
+        args.dim_feedforward_decoder = None
 
     elif args.model_name == "encoder_residual_mlp":
         print("USING SPOTER Encoder+ResiDual+mlp")
         slrt_model = SPOTER3(num_classes=args.num_classes, num_rows=args.num_rows,
                             hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
-                            num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
+                            num_layers_1=args.num_layers_1,
                             dim_feedforward_encoder=args.dim_feedforward_encoder,
-                            dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout,
+                            dropout=args.dropout,
                             has_mlp=True)
         args.norm_first = None
         args.freeze_decoder_layers = None
         args.has_mlp = 1
+        args.num_layers_2 = None
+        args.dim_feedforward_decoder = None
 
     ############################### MODELOS Encoder Decoder with ResiDual Connections ##################################################
 
