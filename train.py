@@ -21,14 +21,10 @@ from Src.datasets.utils_split import __balance_val_split, __split_of_train_seque
 
 from Src.datasets.SpoterDataset import SpoterDataset
 from Src.datasets.SpoterDataLoader import SpoterDataLoader
-
+from Src.load_model import get_slrt_model
 from Src.datasets.drawing import drawing
 
-from Src.spoter.spoter_model import SPOTER
-from Src.spoter.spoter_model1 import SPOTER1
-from Src.spoter.spoter_model2 import SPOTER2
-from Src.spoter.spoter_model3 import SPOTER3
-from Src.spoter.spoter_model4 import SPOTER4
+
 from Src.spoter.utils import train_epoch, evaluate, generate_csv_result, generate_csv_accuracy
 from Src.spoter.gaussian_noise import GaussianNoise
 from Src.spoter.gpu import configurar_cuda_visible
@@ -119,21 +115,22 @@ def get_default_args():
 
     # Training hyperparameters
     parser.add_argument("--epochs", type=int, default=20000, help="Number of epochs to train the model for")
-    parser.add_argument("--lr", type=float, default=0.001, help="Learning rate for the model training")
-    parser.add_argument("--log_freq", type=int, default=1,
-                        help="Log frequency (frequency of printing all the training info)")
-
-    ## trainable parameters
-    #num_classes, num_rows=64,hidden_dim=108, num_heads=9, num_layers_1=6, num_layers_2=6, dim_feedforward=256)
+    parser.add_argument("--lr", type=float, default=0.0001, help="Learning rate for the model training")
     
     parser.add_argument("--sweep", type=int, default=0, help="")
     parser.add_argument("--num_rows", type=int, default=64, help="")
-    parser.add_argument("--use_spoter2", type=int, default=0, help="")
+    parser.add_argument("--model_name", type=str, default="base", help="")
     parser.add_argument("--norm_first", type=int, default=0, help="")
-    parser.add_argument("--not_requires_grad_n_layers", type=int, default=1, help="")
-    
+    parser.add_argument("--freeze_decoder_layers", type=int, default=0, help="")
+    parser.add_argument("--has_mlp", type=int, default=0, help="")
 
-    parser.add_argument("--hidden_dim", type=int, default=108, help="")
+    parser.add_argument("--batch_name", type=str, default="mean_1",help=" | mean_1:calcula backward en cada batch | mean_2: calcula backward en cada instancia")    
+    parser.add_argument("--batch_size", type=int, default=64,help="batch_size ")
+    parser.add_argument("--num_workers", type=int, default=8,help="num_workers ")
+
+    parser.add_argument("--dropout", type=float, default=0.3,help="dropout weighted ")                                                
+
+    parser.add_argument("--hidden_dim", type=int, default=108, help="# obligado 108 por tener 54*2 puntos") 
     parser.add_argument("--num_heads", type=int, default=9, help="")
     parser.add_argument("--num_layers_1", type=int, default=6, help="")
     parser.add_argument("--num_layers_2", type=int, default=6, help="")
@@ -144,14 +141,18 @@ def get_default_args():
     parser.add_argument("--max_acc_difference", type=float, default=0.35, help="")
 
     # Checkpointing
-    parser.add_argument("--save_checkpoints", type=bool, default=True,
-                        help="Determines whether to save weights checkpoints")
+    parser.add_argument("--save_checkpoints", type=bool, default=True,help="Determines whether to save weights checkpoints")
 
-    # Scheduler
-    parser.add_argument("--scheduler", type=str, default="", help="Factor for the steplr plateu scheduler")
+    # lr Scheduler
+    parser.add_argument("--scheduler", type=str, default="plateu", help="Factor for the steplr plateu scheduler")
     parser.add_argument("--scheduler_patience", type=int, default=50,help="Patience for the ReduceLROnPlateau scheduler")
     parser.add_argument("--scheduler_factor", type=float, default=0.99, help="Factor for the ReduceLROnPlateau scheduler")
 
+    # Optimizador
+    parser.add_argument("--optimizer", type=str, default='adam',help="Loss crossentropy weighted ")
+    parser.add_argument("--weight_decay", type=float, default=0.0001,help="Loss crossentropy weighted ")
+
+    # WEIGHT DECAY Scheduler
     parser.add_argument("--weight_decay_dynamic", type=int, default=0,help="Patience for the ReduceLROnPlateau scheduler")
     parser.add_argument("--weight_decay_patience", type=int, default=1,help="Patience for the ReduceLROnPlateau scheduler")
     parser.add_argument("--weight_decay_max", type=float, default=0.05,help="Patience for the ReduceLROnPlateau scheduler")
@@ -163,45 +164,33 @@ def get_default_args():
 
     # Gaussian noise normalization
     parser.add_argument("--gaussian_mean", type=float, default=0.0, help="Mean parameter for Gaussian noise layer")
-    parser.add_argument("--gaussian_std", type=float, default=0.001,
-                        help="Standard deviation parameter for Gaussian noise layer")
+    parser.add_argument("--gaussian_std", type=float, default=0.001,help="Standard deviation parameter for Gaussian noise layer")
+
+    # Dataset
+    parser.add_argument("--data_fold", type=int, default=5,help="")
+    parser.add_argument("--data_seed", type=int, default=42,help="")
+    # Augmentation
+    parser.add_argument("--augmentation", type=int, default=0,help="Augmentations")
+    parser.add_argument("--factor_aug", type=int, default=2,help="factor para multiplicar los datos de augmentation")
+
 
     # Visualization
-    parser.add_argument("--plot_stats", type=bool, default=True,
-                        help="Determines whether continuous statistics should be plotted at the end")
-    parser.add_argument("--plot_lr", type=bool, default=True,
-                        help="Determines whether the LR should be plotted at the end")
+    parser.add_argument("--draw_points", type=int, default=0, help="")
+    parser.add_argument("--plot_stats", type=bool, default=True,help="Determines whether continuous statistics should be plotted at the end")
+    parser.add_argument("--plot_lr", type=bool, default=True,help="Determines whether the LR should be plotted at the end")
 
-    parser.add_argument("--device", type=str, default='0',
-                    help="Determines which Nvidia device will use (just one number)")
+    parser.add_argument("--device", type=str, default='0',help="Determines which Nvidia device will use (just one number)")
+
     # To continue training the data
     parser.add_argument("--resume", type=int, default=1,help="path to retrieve the model for continue training")
     parser.add_argument("--transfer_learning", type=str, default="",help="path to retrieve the model for transfer learning")
-    parser.add_argument("--augmentation", type=int, default=0,
-                        help="Augmentations")
-    parser.add_argument("--factor_aug", type=int, default=2,
-                        help="factor para multiplicar los datos de augmentation")
-    parser.add_argument("--batch_name", type=str, default="",
-                        help=" | mean_1:calcula backward en cada batch | mean_2: calcula backward en cada instancia")    
-    parser.add_argument("--batch_size", type=int, default=64,help="batch_size ")
-    parser.add_argument("--num_workers", type=int, default=8,help="num_workers ")
-                        
-    parser.add_argument("--loss_weighted_factor", type=int, default=1,
-                        help="Loss crossentropy weighted ")
-    parser.add_argument("--label_smoothing", type=float, default=0,
-                        help="Loss crossentropy weighted ")
-    parser.add_argument("--optimizer", type=str, default='sgd',
-                        help="Loss crossentropy weighted ")
-    parser.add_argument("--weight_decay", type=float, default=1e-3,
-                        help="Loss crossentropy weighted ")
-    parser.add_argument("--dropout", type=float, default=0.1,
-                        help="dropout weighted ")                                                
-    parser.add_argument("--data_fold", type=int, default=5,help="")
-    parser.add_argument("--data_seed", type=int, default=42,help="")
-                                                
-    parser.add_argument("--use_wandb", type=int, default=1,help="")
-                           
 
+    # Loss function
+    parser.add_argument("--loss_weighted_factor", type=int, default=2,help="Loss crossentropy weighted ")
+    parser.add_argument("--label_smoothing", type=float, default=0.1,help="Loss crossentropy weighted ")
+
+    # Use wandb
+    parser.add_argument("--use_wandb", type=int, default=1,help="")
 
     return parser
 
@@ -319,104 +308,44 @@ def train(args):
     Path("Results/images/keypoints/").mkdir(parents=True, exist_ok=True)
 
     epoch_start = 0
-
     checkpoint = None
+
+    # Construct the model    
+    slrt_model,args = get_slrt_model(args)
+
+    if args.optimizer == 'adam':
+        sgd_optimizer = optim.Adam(slrt_model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    else:
+        sgd_optimizer = optim.SGD(slrt_model.parameters(), lr=args.lr)
+
+    model_save_folder_path = os.path.join("Results/checkpoints/" + args.experiment_name,
+    args.training_set_path.split("/")[-1].split(".")[0],
+    args.models_random_name)
+
+    path_model = model_save_folder_path+'/checkpoint_model.pth'
+    print("path_model:",path_model)
+
     # RETRIEVE TRAINING
-    if args.resume:
-        model_save_folder_path = os.path.join("Results/checkpoints/" + args.experiment_name,
-        args.training_set_path.split("/")[-1].split(".")[0],
-        args.models_random_name)
+    if args.resume and  os.path.exists(path_model):
 
-        path_model = model_save_folder_path+'/checkpoint_model.pth'
-        print("path_model:",path_model)
-        if args.use_spoter2 ==1:
-            print("USING SPOTER Version 2 + encoder + decoder con multiatten and atten")
-            slrt_model = SPOTER1(num_classes=args.num_classes, num_rows=args.num_rows,
-                                hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
-                                num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
-                                dim_feedforward_encoder=args.dim_feedforward_encoder,
-                                dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout,
-                                norm_first = bool(args.norm_first),
-                                not_requires_grad_n_layers = bool(args.not_requires_grad_n_layers))
+        print("RESUME MODEL : Load weights")
+        checkpoint = torch.load(path_model)
+        if args.use_wandb:
+            print("wandb id:",checkpoint["wandb"])
+        #print("lr      :",checkpoint["lr"])
+        print("epoch   :",checkpoint["epoch"])
+        slrt_model.load_state_dict(checkpoint['model_state_dict'])
+        slrt_model.to("cuda")
+        #args.lr = 0.000099#checkpoint['lr']
 
-        elif args.use_spoter2 ==2:
-            print("USING SPOTER Version 3 + solo encoder")
-            slrt_model = SPOTER2(num_classes=args.num_classes, num_rows=args.num_rows,
-                                hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
-                                num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
-                                dim_feedforward_encoder=args.dim_feedforward_encoder,
-                                dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout,
-                                norm_first = bool(args.norm_first),
-                                not_requires_grad_n_layers = bool(args.not_requires_grad_n_layers))
-
-        elif args.use_spoter2 ==3:
-            print("USING SPOTER Version 4 + solo encoder + mlp")
-            slrt_model = SPOTER2(num_classes=args.num_classes, num_rows=args.num_rows,
-                                hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
-                                num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
-                                dim_feedforward_encoder=args.dim_feedforward_encoder,
-                                dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout,
-                                norm_first = bool(args.norm_first),
-                                not_requires_grad_n_layers = bool(args.not_requires_grad_n_layers),
-                                has_mlp=True)
-
-        elif args.use_spoter2 ==4:
-            print("USING SPOTER Version 5 + solo encoder ResiDual + mlp")
-            slrt_model = SPOTER3(num_classes=args.num_classes, num_rows=args.num_rows,
-                                hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
-                                num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
-                                dim_feedforward_encoder=args.dim_feedforward_encoder,
-                                dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout,
-                                norm_first = bool(args.norm_first),
-                                not_requires_grad_n_layers = bool(args.not_requires_grad_n_layers),
-                                has_mlp=True)
-
-        elif args.use_spoter2 ==5:
-            print("USING SPOTER Version 6 +  encoder ResiDual + decoder ResiDual")
-            slrt_model = SPOTER4(num_classes=args.num_classes, num_rows=args.num_rows,
-                                hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
-                                num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
-                                dim_feedforward_encoder=args.dim_feedforward_encoder,
-                                dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout,
-                                norm_first = bool(args.norm_first),
-                                not_requires_grad_n_layers = bool(args.not_requires_grad_n_layers),
-                                )
-        else:
-            slrt_model = SPOTER(num_classes=args.num_classes, num_rows=args.num_rows,
-                                hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
-                                num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
-                                dim_feedforward_encoder=args.dim_feedforward_encoder,
-                                dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout)
-
-        if os.path.exists(path_model):
-            print("RESUME MODEL : Load weights")
-            checkpoint = torch.load(path_model)
-            if args.use_wandb:
-                print("wandb id:",checkpoint["wandb"])
-            #print("lr      :",checkpoint["lr"])
-            print("epoch   :",checkpoint["epoch"])
-            slrt_model.load_state_dict(checkpoint['model_state_dict'])
-            slrt_model.to("cuda")
-            args.lr = 0.000099#checkpoint['lr']
-
-        if args.optimizer == 'adam':
-            sgd_optimizer = optim.Adam(slrt_model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-        else:
-            sgd_optimizer = optim.SGD(slrt_model.parameters(), lr=args.lr)
-
-        if os.path.exists(path_model):
-            print("RESUME MODEL : Load optimizer")
-            sgd_optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-            epoch_start = checkpoint['epoch']
+        print("RESUME MODEL : Load optimizer")
+        sgd_optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        epoch_start = checkpoint['epoch']
 
     # TRANSFER LEARNING
-    elif args.transfer_learning:
-        slrt_model = SPOTER(num_classes=100, num_rows=args.num_rows,
-                            hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
-                            num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
-                            dim_feedforward=args.dim_feedforward)
-        checkpoint = torch.load(args.transfer_learning)
-        slrt_model.load_state_dict(checkpoint['model_state_dict'])
+    if args.transfer_learning:
+        checkpoint_transfer = torch.load(args.transfer_learning)
+        slrt_model.load_state_dict(checkpoint_transfer['model_state_dict'])
 
         # freeze all model layer
         for param in slrt_model.parameters():
@@ -430,42 +359,8 @@ def train(args):
 
         sgd_optimizer = optim.SGD(slrt_model.linear_class.parameters(), lr=args.lr)
 
-    # Normal scenario
-    else:
-
-
-        if args.use_spoter2:
-            print("USING SPOTER Version 2")
-            slrt_model = SPOTER2(num_classes=args.num_classes, num_rows=args.num_rows,
-                                hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
-                                num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
-                                dim_feedforward_encoder=args.dim_feedforward_encoder,
-                                dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout,
-                                norm_first = bool(args.norm_first),
-                                not_requires_grad_n_layers = bool(args.not_requires_grad_n_layers))
-
-        else:
-            slrt_model = SPOTER(num_classes=args.num_classes, num_rows=args.num_rows,
-                                hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
-                                num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
-                                dim_feedforward_encoder=args.dim_feedforward_encoder,
-                                dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout)
-
-        if args.optimizer == 'adam':
-            sgd_optimizer = optim.Adam(slrt_model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-            #sgd_optimizer = optim.AdamW(slrt_model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-
-        else:
-            sgd_optimizer = optim.SGD(slrt_model.parameters(), lr=args.lr)
-
-    # Construct the model
-    
-
     if args.use_wandb:
-        if (args.resume and checkpoint is not None):
-            print("RESUME MUST")
-            print("RESUME MUST")
-            print("RESUME MUST")
+        print("Reconfiguration")
         # MARK: TRAINING PREPARATION AND MODULES
         run = wandb.init(project=PROJECT_WANDB, 
                         entity=ENTITY,
@@ -476,7 +371,7 @@ def train(args):
                         #settings=wandb.Settings(start_method="fork"),
                         resume="must" if (args.resume and checkpoint is not None)  else None,
                         id=checkpoint["wandb"] if (args.resume and checkpoint is not None)  else None,
-                        tags=["paper"])
+                        tags=["paper_2024"])
 
     if args.augmentation:
         train_set = SpoterDataset(args.training_set_path, transform=transform, has_augmentation=True,keypoints_model='mediapipe',factor=args.factor_aug)
@@ -487,21 +382,21 @@ def train(args):
     if args.validation_set == "from-file":
         print("NO AUGMENTATION UN VALIDATION")
         val_set    = SpoterDataset(args.validation_set_path, has_augmentation=False,keypoints_model='mediapipe')
-        val_loader = SpoterDataLoader(val_set, shuffle=True, generator=g, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
+        val_loader = SpoterDataLoader(val_set, shuffle=False, generator=g, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
 
     elif args.validation_set == "split-from-train":
         train_set, val_set = __balance_val_split(train_set, 0.2)
 
         val_set.transform = None
         val_set.augmentations = False
-        val_loader = SpoterDataLoader(val_set, shuffle=True, generator=g, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
+        val_loader = SpoterDataLoader(val_set, shuffle=False, generator=g, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
     else:
         val_loader = None
 
     # Testing set
     if args.testing_set_path:
         eval_set = SpoterDataset(args.testing_set_path, has_augmentation=False,keypoints_model='mediapipe')
-        eval_loader = SpoterDataLoader(eval_set, shuffle=True, generator=g, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
+        eval_loader = SpoterDataLoader(eval_set, shuffle=False, generator=g, batch_size=args.batch_size, num_workers=args.num_workers, pin_memory=True)
     else:
         eval_loader = None
 
@@ -772,6 +667,7 @@ def train(args):
                     'current_weight_decay':current_weight_decay,
 
                     "wandb": save_artifact.WandBID(wandb.run.id).state_dict(),
+                    "wandb_step": step = run.summary.get("_step"),
                     "epoch": save_artifact.Epoch(epoch).state_dict(),
                     "metric_val_acc": save_artifact.Metric(previous_val_acc).state_dict()
                 }, model_save_folder_path + "/checkpoint_model.pth")
@@ -811,6 +707,7 @@ def train(args):
                         'current_weight_decay':current_weight_decay,
 
                         "wandb": save_artifact.WandBID(wandb.run.id).state_dict(),
+                        "wandb_step": step = run.summary.get("_step"),
                         "epoch": save_artifact.Epoch(epoch).state_dict(),
                         "metric_val_acc": save_artifact.Metric(top_val_acc).state_dict()
 
@@ -832,26 +729,25 @@ def train(args):
                 checkpoint_index += 1
 
         if epoch%1000 == 0:
-            list_images_train,filename_train = drawer.get_video_frames_25_glosses_batch(list_depth_map_train,list_label_name_train,suffix='train',save_gif=True)
-            print("sending gif")
-            #wandb.log({"train_video": wandb.Video(filename_train, fps=1, format="mp4")})
+            if args.draw_points:
+                list_images_train,filename_train = drawer.get_video_frames_25_glosses_batch(list_depth_map_train,list_label_name_train,suffix='train',save_gif=True)
+                print("sending gif")
+                #wandb.log({"train_video": wandb.Video(filename_train, fps=1, format="mp4")})
 
-            list_images_val,filename_val   = drawer.get_video_frames_25_glosses_batch(list_depth_map_val,list_label_name_val,suffix='val',save_gif=True)
-            print("sending gif")
-            if args.use_wandb:
-                if val_loader:
-                    wandb.log({"gloss_train_video": wandb.Video(filename_train, format="gif")})
-                    wandb.log({"gloss_val_video": wandb.Video(filename_val, format="gif")})
-                    #wandb.log({"val_video": wandb.Video(filename_val, fps=1,format="mp4")})
+                list_images_val,filename_val   = drawer.get_video_frames_25_glosses_batch(list_depth_map_val,list_label_name_val,suffix='val',save_gif=True)
+                print("sending gif")
+                if args.use_wandb:
+                    if val_loader:
+                        wandb.log({"gloss_train_video": wandb.Video(filename_train, format="gif")})
+                        wandb.log({"gloss_val_video": wandb.Video(filename_val, format="gif")})
+                        #wandb.log({"val_video": wandb.Video(filename_val, fps=1,format="mp4")})
 
         if epoch%100 == 0:
-
             if args.use_wandb:
                 if val_loader:
                     #log_values['Train_table_stats']   =  wandb.Table(dataframe=df_train_stats)
                     #log_values['Val_table_stats']     =  wandb.Table(dataframe=df_val_stats)
                     log_values['Compare_table_stats'] =  wandb.Table(dataframe=df_merged)
-
 
             if top_val_f1_weighted!= top_val_f1_weighted_before:
                 top_val_f1_weighted_before = top_val_f1_weighted

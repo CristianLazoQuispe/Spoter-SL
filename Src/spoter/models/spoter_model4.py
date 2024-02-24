@@ -285,21 +285,18 @@ class SPOTER4(nn.Module):
 
     def __init__(self, num_classes, num_rows=64,hidden_dim=108, num_heads=9, num_layers_1=6, num_layers_2=6, 
                             dim_feedforward_encoder=64,
-                            dim_feedforward_decoder=256,dropout=0.3,norm_first=False,not_requires_grad_n_layers=False):
+                            dim_feedforward_decoder=256,dropout=0.3):
         super().__init__()
 
         self.hidden_dim  = hidden_dim
         self.pos         = nn.Parameter(torch.rand(1,1, hidden_dim))
         self.class_query = nn.Parameter(torch.rand(1, hidden_dim))
-        print("self.pos",self.pos)
-        print("self.pos",self.pos.shape)
         #https://pytorch.org/docs/stable/generated/torch.nn.Transformer.html
         self.transformer  = nn.Transformer(d_model=hidden_dim, nhead =num_heads,
         num_encoder_layers= num_layers_1, 
         num_decoder_layers= num_layers_2,
         dim_feedforward = dim_feedforward_encoder,
-        dropout=dropout,
-        norm_first = norm_first)
+        dropout=dropout) # norm_first is not necessary because we change the encoder decoder with dual residual norm
 
         self.linear_class = nn.Linear(hidden_dim, num_classes)
 

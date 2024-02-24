@@ -76,14 +76,12 @@ class SPOTER1(nn.Module):
 
     def __init__(self, num_classes, num_rows=64,hidden_dim=108, num_heads=9, num_layers_1=6, num_layers_2=6, 
                             dim_feedforward_encoder=64,
-                            dim_feedforward_decoder=256,dropout=0.3,norm_first=False,not_requires_grad_n_layers=False):
+                            dim_feedforward_decoder=256,dropout=0.3,norm_first=False,freeze_decoder_layers=False):
         super(SPOTER1).__init__()
 
         self.hidden_dim  = hidden_dim
         self.pos         = nn.Parameter(torch.rand(1,1, hidden_dim))
         self.class_query = nn.Parameter(torch.rand(1, hidden_dim))
-        print("self.pos",self.pos)
-        print("self.pos",self.pos.shape)
         #https://pytorch.org/docs/stable/generated/torch.nn.Transformer.html
         self.transformer  = nn.Transformer(d_model=hidden_dim, nhead =num_heads,
         num_encoder_layers= num_layers_1, 
@@ -101,7 +99,7 @@ class SPOTER1(nn.Module):
         self.act_relu = nn.ReLU()
         self.transformer.decoder.layers = _get_clones(custom_decoder_layer, self.transformer.decoder.num_layers)
         
-        if not not_requires_grad_n_layers:
+        if freeze_decoder_layers:
             print("CONGELAR CAPAS")
             print("CONGELAR CAPAS")
             print("CONGELAR CAPAS")

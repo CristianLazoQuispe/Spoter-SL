@@ -8,7 +8,7 @@ class SPOTER2(nn.Module):
 
     def __init__(self, num_classes, num_rows=64,hidden_dim=108, num_heads=9, num_layers_1=6, num_layers_2=6, 
                             dim_feedforward_encoder=64,
-                            dim_feedforward_decoder=256,dropout=0.3,norm_first=False,not_requires_grad_n_layers=False,has_mlp=False):
+                            dim_feedforward_decoder=256,dropout=0.3,norm_first=False,has_mlp=False):
 
         super(SPOTER2, self).__init__()
 
@@ -22,7 +22,7 @@ class SPOTER2(nn.Module):
                 nhead=num_heads,
                 dim_feedforward=dim_feedforward_encoder,
                 dropout=dropout,
-                norm_first = norm_first),
+                norm_first = False),
             num_layers=num_layers_1
         )
 

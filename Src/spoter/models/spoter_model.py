@@ -45,31 +45,37 @@ class SPOTER(nn.Module):
 
     def __init__(self, num_classes, num_rows=64,hidden_dim=108, num_heads=9, num_layers_1=6, num_layers_2=6, 
                             dim_feedforward_encoder=64,
-                            dim_feedforward_decoder=256,dropout=0.3):
+                            dim_feedforward_decoder=256,dropout=0.3,norm_first=False,freeze_decoder_layers=False):
         super().__init__()
 
         self.hidden_dim  = hidden_dim
         self.pos         = nn.Parameter(torch.rand(1,1, hidden_dim))
         self.class_query = nn.Parameter(torch.rand(1, hidden_dim))
-        print("self.pos",self.pos)
-        print("self.pos",self.pos.shape)
+        #print("self.pos",self.pos)
+        #print("self.pos",self.pos.shape)
         #https://pytorch.org/docs/stable/generated/torch.nn.Transformer.html
         self.transformer  = nn.Transformer(d_model=hidden_dim, nhead =num_heads,
         num_encoder_layers= num_layers_1, 
         num_decoder_layers= num_layers_2,
         dim_feedforward = dim_feedforward_encoder,
-        dropout=dropout)
+        dropout=dropout,
+        norm_first = norm_first)
+
         self.linear_class = nn.Linear(hidden_dim, num_classes)
 
         custom_decoder_layer = SPOTERTransformerDecoderLayer(self.transformer.d_model, self.transformer.nhead,
-                                                             dim_feedforward_decoder, dropout=dropout, activation="relu")
+                                                             dim_feedforward_decoder, dropout=dropout, activation="relu",norm_first=norm_first)
 
         self.dropout1 = nn.Dropout(dropout)
         self.act_relu = nn.ReLU()
         self.transformer.decoder.layers = _get_clones(custom_decoder_layer, self.transformer.decoder.num_layers)
-        
-        for param in self.transformer.decoder.layers[:3].parameters():
-            param.requires_grad = False # Congelar capas
+
+        if freeze_decoder_layers:
+            print("CONGELAR CAPAS")
+            print("CONGELAR CAPAS")
+            print("CONGELAR CAPAS")
+            for param in self.transformer.decoder.layers[:3].parameters():
+                param.requires_grad = False # Congelar capas
             
     def forward(self, inputs,show=False):
         h = torch.unsqueeze(inputs.flatten(start_dim=1), 1).float()
