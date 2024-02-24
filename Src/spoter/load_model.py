@@ -71,7 +71,8 @@ def get_slrt_model(args):
                             hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
                             num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
                             dim_feedforward_encoder=args.dim_feedforward_encoder,
-                            dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout,
+                            dim_feedforward_decoder=args.dim_feedforward_decoder,
+                            dropout=args.dropout,
                             has_mlp=False)
         args.norm_first = None
         args.freeze_decoder_layers =None

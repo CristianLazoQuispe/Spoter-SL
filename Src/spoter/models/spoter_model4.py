@@ -115,7 +115,7 @@ class SPOTERTransformerEncoder(nn.TransformerEncoder):
     def __init__(self, d_model,encoder_layer, num_layers, norm=None, enable_nested_tensor=True, mask_check=True):
         super(SPOTERTransformerEncoder, self).__init__(encoder_layer, num_layers, norm, enable_nested_tensor, mask_check)
 
-        self.layer_norm = nn.LayerNorm(d_model, eps= 1e-5, bias=True)
+        self.layer_norm = nn.LayerNorm(d_model, eps= 1e-5)
 
         self.layers = _get_clones(encoder_layer, num_layers)
         self.norm  = norm
@@ -184,7 +184,7 @@ class SPOTERTransformerDecoder(nn.TransformerDecoder):
     def __init__(self, d_model,decoder_layer, num_layers, norm=None):
         super(SPOTERTransformerDecoder, self).__init__(decoder_layer, num_layers,norm)
 
-        self.layer_norm = nn.LayerNorm(d_model, eps= 1e-5, bias=True)
+        self.layer_norm = nn.LayerNorm(d_model, eps= 1e-5)
 
         self.layers = _get_clones(decoder_layer, num_layers)
         self.norm  = norm
@@ -224,7 +224,7 @@ class SPOTERTransformerDecoderLayer(nn.TransformerDecoderLayer):
         super(SPOTERTransformerDecoderLayer, self).__init__(d_model, nhead, dim_feedforward, dropout, activation)
 
         #del self.self_attn
-        self.norm3 = nn.LayerNorm(d_model, eps= 1e-5, bias=True)
+        self.norm3 = nn.LayerNorm(d_model, eps= 1e-5)
 
     def forward(self, data: Tuple[Tensor, Tensor], memory: torch.Tensor, tgt_mask: Optional[torch.Tensor] = None,
                 memory_mask: Optional[torch.Tensor] = None, tgt_key_padding_mask: Optional[torch.Tensor] = None,
@@ -286,7 +286,7 @@ class SPOTER4(nn.Module):
     def __init__(self, num_classes, num_rows=64,hidden_dim=108, num_heads=9, num_layers_1=6, num_layers_2=6, 
                             dim_feedforward_encoder=64,
                             dim_feedforward_decoder=256,dropout=0.3):
-        super().__init__()
+        super(SPOTER4,self).__init__()
 
         self.hidden_dim  = hidden_dim
         self.pos         = nn.Parameter(torch.rand(1,1, hidden_dim))
@@ -304,7 +304,7 @@ class SPOTER4(nn.Module):
         self.dropout1 = nn.Dropout(dropout)
         self.act_relu = nn.ReLU()
 
-        self.layer_norm_encoder = nn.LayerNorm(hidden_dim, eps= 1e-5, bias=True)
+        self.layer_norm_encoder = nn.LayerNorm(hidden_dim, eps= 1e-5)
 
         self.transformer.encoder = SPOTERTransformerEncoder(
             d_model=hidden_dim,
@@ -317,7 +317,7 @@ class SPOTER4(nn.Module):
             num_layers=num_layers_1,
             norm = self.layer_norm_encoder
         )
-        self.layer_norm_decoder = nn.LayerNorm(hidden_dim, eps= 1e-5, bias=True)
+        self.layer_norm_decoder = nn.LayerNorm(hidden_dim, eps= 1e-5)
 
         self.transformer.decoder = SPOTERTransformerDecoder(
             d_model=hidden_dim,

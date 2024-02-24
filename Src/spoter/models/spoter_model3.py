@@ -117,7 +117,7 @@ class SPOTERTransformerEncoder(nn.TransformerEncoder):
     def __init__(self, d_model,encoder_layer, num_layers, norm=None, enable_nested_tensor=True, mask_check=True):
         super(SPOTERTransformerEncoder, self).__init__(encoder_layer, num_layers, norm, enable_nested_tensor, mask_check)
 
-        self.layer_norm = nn.LayerNorm(d_model, eps= 1e-5, bias=True)
+        self.layer_norm = nn.LayerNorm(d_model, eps= 1e-5)
 
         self.layers = _get_clones(encoder_layer, num_layers)
 
@@ -202,6 +202,7 @@ class SPOTER3(nn.Module):
         self.pos = nn.Parameter(torch.rand(1, 1, hidden_dim))
         self.class_query = nn.Parameter(torch.rand(1, hidden_dim))
 
+        #d_model,encoder_layer, num_layers, norm=None, enable_nested_tensor=True, mask_check
         self.encoder = SPOTERTransformerEncoder(
             d_model=hidden_dim,
             encoder_layer = SPOTERTransformerEncoderLayer(

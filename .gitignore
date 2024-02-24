@@ -1,3 +1,4 @@
+*custom_sweep.sh
 Results/**/*.pth
 Results/**/*.csv
 

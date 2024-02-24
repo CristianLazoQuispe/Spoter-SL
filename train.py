@@ -43,31 +43,58 @@ import argparse
 import hashlib
 import random
 import string
+import traceback
+
+import pandas as pd
+import time
+
 
 run = None
 model_save_folder_path = None
 top_val_f1_weighted = 0
 top_val_f1_weighted_before = 0
-
+args= None
+is_finished=False
 def finish_process():
     global run,model_save_folder_path
     global top_val_f1_weighted,top_val_f1_weighted_before
+    global args,is_finished
     """
     function to finish wandb if there is an error in the code or force stop
     """
+    if is_finished:
+        return None
     print("Finishing process")
     if top_val_f1_weighted!= top_val_f1_weighted_before:
-        print("Sending artifact to wandb!")
-        artifact = wandb.Artifact(f'best-model_{run.id}.pth', type='model')
-        artifact.add_file(model_save_folder_path + "/checkpoint_best_model.pth")
-        run.log_artifact(artifact)
-    print("Closing wandb.. ")
-    wandb.finish()
-    print("Wandb closed")
+        try:
+            if args.use_wandb:
+
+                print("Sending last table and model")
+
+                df_merged = pd.read_csv(model_save_folder_path + "/df_merged_best.csv")
+                log_values['Compare_table_stats'] =  wandb.Table(dataframe=df_merged)
+
+                print("Sending artifact to wandb!")
+                artifact = wandb.Artifact(f'best-model_{run.id}.pth', type='model')
+                artifact.add_file(model_save_folder_path + "/checkpoint_best_model.pth")
+                run.log_artifact(artifact)
+                print("Waiting wandb.. ")
+        except:
+            print(traceback.format_exc())
+    try:
+        if args.use_wandb:
+            time.sleep(30)
+            print("Closing wandb.. ")
+            wandb.finish()
+            time.sleep(2)
+            print("Wandb closed")
+    except:
+        print(traceback.format_exc())
     print("Cleaning memory.. ")
     gc.collect()
     torch.cuda.empty_cache()
     print("Memory cleaned")
+    is_finished = True
 
 # Modifica el collate_fn para rellenar secuencias
 def custom_collate_fn(batch):
@@ -308,7 +335,7 @@ def train(args):
     Path("Results/images/histograms/").mkdir(parents=True, exist_ok=True)
     Path("Results/images/keypoints/").mkdir(parents=True, exist_ok=True)
 
-    epoch_start = 0
+    epoch_start = 1
     checkpoint = None
 
     # Construct the model    
@@ -337,11 +364,10 @@ def train(args):
         print("epoch   :",checkpoint["epoch"])
         slrt_model.load_state_dict(checkpoint['model_state_dict'])
         slrt_model.to("cuda")
-        #args.lr = 0.000099#checkpoint['lr']
 
         print("RESUME MODEL : Load optimizer")
         sgd_optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        epoch_start = checkpoint['epoch']
+        epoch_start = checkpoint['epoch']+1
 
     # TRANSFER LEARNING
     if args.transfer_learning:
@@ -531,7 +557,17 @@ def train(args):
     
     step = 0 if step is None else step+1
 
-    for epoch in range(epoch_start, args.epochs):
+    print("epoch_start, args.epochs",epoch_start, args.epochs)
+    print("epoch_start, args.epochs",epoch_start, args.epochs)
+
+    epoch = epoch_start
+    train_loss = np.inf
+    current_lr = sgd_optimizer.param_groups[0]["lr"]
+    current_weight_decay = sgd_optimizer.param_groups[0]['weight_decay']
+    
+    cnt_val_none = 0
+
+    for epoch in range(epoch_start, args.epochs+1):
 
         #sgd_optimizer = lr_lambda(epoch, sgd_optimizer)
         start_time = time.time()
@@ -597,7 +633,10 @@ def train(args):
 
         total_time = time.time()-start_time
 
-
+        if val_loss is None:
+            cnt_val_none+=1
+            if cnt_val_none>3:
+                break
                 
         if val_loss is not None:
             previous_val_loss = val_loss
@@ -726,6 +765,9 @@ def train(args):
                         'current_weight_decay':current_weight_decay,
 
                     }, model_save_folder_path + "/checkpoint_best_model.pth")
+
+                df_merged.to_csv(model_save_folder_path + "/df_merged_best.csv",index=False)
+
                 
                 checkpoint_index += 1
 
@@ -744,15 +786,14 @@ def train(args):
                         #wandb.log({"val_video": wandb.Video(filename_val, fps=1,format="mp4")})
 
         if epoch%100 == 0:
-            if args.use_wandb:
-                if val_loader:
-                    #log_values['Train_table_stats']   =  wandb.Table(dataframe=df_train_stats)
-                    #log_values['Val_table_stats']     =  wandb.Table(dataframe=df_val_stats)
-                    log_values['Compare_table_stats'] =  wandb.Table(dataframe=df_merged)
 
             if top_val_f1_weighted!= top_val_f1_weighted_before:
                 top_val_f1_weighted_before = top_val_f1_weighted
                 if args.use_wandb:
+
+                    df_merged = pd.read_csv(model_save_folder_path + "/df_merged_best.csv")
+                    log_values['Compare_table_stats'] =  wandb.Table(dataframe=df_merged)
+
                     print("Sending artifact best model to wandb!")
                     artifact = wandb.Artifact(f'best-model_{run.id}.pth', type='model')
                     artifact.add_file(model_save_folder_path + "/checkpoint_best_model.pth")
@@ -765,6 +806,53 @@ def train(args):
 
         lr_progress.append(sgd_optimizer.param_groups[0]["lr"])
 
+
+    print("Saving last model ",model_save_folder_path + "/checkpoint_model.pth")
+
+    if args.use_wandb:
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': slrt_model.state_dict(),
+            'optimizer_state_dict': sgd_optimizer.state_dict(),
+            'loss': train_loss,
+            'current_lr':current_lr,
+            "lr_scheduler": lr_scheduler.state_dict(),
+
+            'current_weight_decay':current_weight_decay,
+
+            "wandb": save_artifact.WandBID(wandb.run.id).state_dict(),
+            "wandb_step": run.summary.get("_step"),
+            "epoch": save_artifact.Epoch(epoch).state_dict(),
+            "metric_val_acc": save_artifact.Metric(previous_val_acc).state_dict()
+        }, model_save_folder_path + "/checkpoint_model.pth")
+    else:
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': slrt_model.state_dict(),
+            'optimizer_state_dict': sgd_optimizer.state_dict(),
+            'loss': train_loss,
+
+            'current_lr':current_lr,
+            "lr_scheduler": lr_scheduler.state_dict(),
+
+            'current_weight_decay':current_weight_decay,
+
+        }, model_save_folder_path + "/checkpoint_model.pth")
+        
+
+    print("sending last table and model")
+    if top_val_f1_weighted!= top_val_f1_weighted_before:
+        top_val_f1_weighted_before = top_val_f1_weighted
+        if args.use_wandb:
+            print("Sending last table and model")
+
+            df_merged = pd.read_csv(model_save_folder_path + "/df_merged_best.csv")
+            log_values['Compare_table_stats'] =  wandb.Table(dataframe=df_merged)
+
+            print("Sending artifact best model to wandb!")
+            artifact = wandb.Artifact(f'best-model_{run.id}.pth', type='model')
+            artifact.add_file(model_save_folder_path + "/checkpoint_best_model.pth")
+            run.log_artifact(artifact)
     # MARK: TESTING
 
     print("\nTesting checkpointed models starting...\n")
@@ -801,6 +889,7 @@ def train(args):
     print("\nAny desired statistics have been plotted.\nThe experiment is finished.")
     logging.info("\nAny desired statistics have been plotted.\nThe experiment is finished.")
 
+    finish_process()
 
 if __name__ == '__main__':
     

@@ -77,7 +77,7 @@ class SPOTER1(nn.Module):
     def __init__(self, num_classes, num_rows=64,hidden_dim=108, num_heads=9, num_layers_1=6, num_layers_2=6, 
                             dim_feedforward_encoder=64,
                             dim_feedforward_decoder=256,dropout=0.3,norm_first=False,freeze_decoder_layers=False):
-        super(SPOTER1).__init__()
+        super(SPOTER1,self).__init__()
 
         self.hidden_dim  = hidden_dim
         self.pos         = nn.Parameter(torch.rand(1,1, hidden_dim))
