@@ -65,6 +65,11 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                 label_original  = int(labels[0][0])
                 if torch.isnan(loss):
                     #print(f"NaN loss detected at iteration {i+1}, {j+1}. Skipping this iteration.")
+                    print("")
+                    print("max inputs:", torch.max(inputs_total[j]).item())
+                    print("min inputs:", torch.min(inputs_total[j]).item())
+                    print("std inputs:", torch.std(inputs_total[j]).item())
+
                     tepoch.set_postfix(id_aug=j+1,m_loss=None)
                     labels_predicted.append(-1)
                     labels_original.append(label_original)
