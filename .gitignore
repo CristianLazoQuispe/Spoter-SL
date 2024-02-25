@@ -2,6 +2,8 @@
 Results/**/*.pth
 Results/**/*.csv
 
+Results/checkpoints/**/*.jpg
+
 foo_after.jpg
 foo_before.jpg
 out-checkpoints/

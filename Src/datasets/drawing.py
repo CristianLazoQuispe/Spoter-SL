@@ -140,6 +140,45 @@ class drawing:
         
         print("Video creado con éxito:", video_output)
         return video_output
+
+
+    def get_image_generation(self,list_maps_generation_train,suffix='train',save_image=True,folder=""):
+
+        fig, axs = plt.subplots(2, 6, figsize=(20, 5))
+        for i in range(2):
+            for j in range(3):
+                depth_map     = list_maps_generation_train[i*3 + j][0].view(1, 54, 2)[0]  
+                depth_map_gen = list_maps_generation_train[i*3 + j][1].view(1, 54, 2)[0]
+    
+                depth_map     = depth_map+0.5
+                depth_map_gen = depth_map_gen+0.5
+
+                #print("depth_map",depth_map.max(),depth_map.min(),depth_map.std())
+                #print("depth_map_gen",depth_map_gen.max(),depth_map_gen.min(),depth_map_gen.std())
+
+                img = self.draw_lines(depth_map,text_left="",text_right=str(""))                    
+                axs[i, 2*(j)].set_title(str(i*3 + j)+"-last_frame")
+                axs[i, 2*(j)].imshow(img)
+                axs[i, 2*(j)].axis('off')
+                img = self.draw_lines(depth_map_gen,text_left="",text_right=str(""))                    
+                axs[i, 2*(j)+1].set_title(str(i*3 + j)+"-last_frame_gen")
+                axs[i, 2*(j)+1].imshow(img)
+                axs[i, 2*(j)+1].axis('off')
+
+        path = ""
+        plt.tight_layout() 
+        if save_image:
+            selected_aug = random.randrange(20000)
+            if folder == "":
+                path = f'Results/images/keypoints/matrix_6_generation_{suffix}_{selected_aug}.jpg'
+            else:
+                path = os.path.join(folder,f"last_generation_{suffix}.jpg")
+            plt.savefig(path)
+            plt.close(fig)
+            img = plt.imread(path)    
+
+        return img,path
+    
     def get_video_frames_25_glosses_batch(self,list_depth_map_original,list_label_name_original,suffix='train',save_gif = True):
         
         list_depth_map = []
@@ -177,7 +216,7 @@ class drawing:
                         axs[i, j].axis('off')
                 plt.tight_layout() 
                 try:
-                    selected_aug = random.randrange(200)
+                    selected_aug = random.randrange(20000)
                     plt.savefig(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
                     plt.close(fig)
                     img = plt.imread(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')    
@@ -239,7 +278,7 @@ class drawing:
                         axs[i, j].axis('off')
                 plt.tight_layout() 
                 try:
-                    selected_aug = random.randrange(200)
+                    selected_aug = random.randrange(20000)
                     plt.savefig(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')
                     plt.close(fig)
                     img = plt.imread(f'Results/images/keypoints/matrix_25_gloss_{suffix}_{id_frame}_{selected_aug}.jpg')

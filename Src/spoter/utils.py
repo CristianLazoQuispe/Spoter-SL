@@ -27,6 +27,10 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
     list_depth_map_original = []
     list_label_name_original = []
 
+    sum_loss_generation     = 0
+    sum_loss_classification = 0
+    list_maps_generation = []
+
     with tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Train Epoch {epoch }:',bar_format='{desc:<18.23}{percentage:3.0f}%|{bar:20}{r_bar}') as tepoch:
         for i, data in tepoch:
             #print("data:",data)
@@ -53,9 +57,20 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                 labels = labels.unsqueeze(0)
 
                 with torch.autocast(device_type="cuda",enabled=True):
+                    if args.model_name == "generative_class_residual":
 
-                    outputs = model(inputs).expand(1, -1, -1)
-                    loss = criterion(outputs[0], labels[0])
+                        outputs,tgt,generation = model(inputs)
+                        outputs = outputs.expand(1, -1, -1)
+
+                        loss_classification = criterion[0](outputs[0], labels[0])
+                        loss_generation     = torch.sqrt(criterion[1](tgt,generation))
+                        loss = loss_generation+loss_classification*0.2
+                        if i==0 and j<6:
+                            list_maps_generation.append([tgt,generation])
+
+                    else:
+                        outputs = model(inputs).expand(1, -1, -1)
+                        loss = criterion(outputs[0], labels[0])
 
                 #nn_utils.clip_grad_norm_(model.parameters(), clip_grad_max_norm)
                 
@@ -77,6 +92,10 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
 
                 if batch_name =='mean_2':
                     grad_scaler.scale(loss).backward()
+
+                if args.model_name == "generative_class_residual":
+                    sum_loss_generation     += loss_generation.item()
+                    sum_loss_classification += loss_classification.item()
 
                 running_loss += loss.item()
                 if batch_name!='':
@@ -126,8 +145,12 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                 pred_all += 1
 
                 #tqdm.tqdm.write(f"ID:{i+1} IDaug:{j+1} | Loss: {running_loss/pred_all} Acc: {pred_correct / pred_all}")
-                tepoch.set_postfix(id_aug=j+1,m_loss=running_loss/pred_all,m_acc=pred_correct / pred_all)
-
+                #tepoch.set_postfix(id_aug=j+1,m_loss=running_loss/pred_all,m_acc=pred_correct / pred_all)
+                if args.model_name == "generative_class_residual":
+                    tepoch.set_postfix(id_aug=j+1,m_loss=running_loss/pred_all,m_acc=pred_correct / pred_all,
+                                       m_loss_gen=sum_loss_generation/pred_all,m_loss_acc=sum_loss_classification/pred_all)
+                else:
+                    tepoch.set_postfix(id_aug=j+1,m_loss=running_loss/pred_all,m_acc=pred_correct / pred_all)
 
     # Asegurarse de realizar el último paso de retropropagación si es necesario
     if batch_name =='mean_1':
@@ -150,11 +173,12 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
             optimizer.zero_grad(set_to_none=True)
     pred_all= 1 if pred_all == 0 else pred_all
     train_loss = None if running_loss == 0 else running_loss/pred_all
-
     # clear cache
     torch.cuda.empty_cache()
-    
-    return train_loss,stats,labels_original,labels_predicted,list_depth_map_original,list_label_name_original
+    sum_loss_generation     = sum_loss_generation/pred_all
+    sum_loss_classification = sum_loss_classification/pred_all
+
+    return train_loss,stats,labels_original,labels_predicted,list_depth_map_original,list_label_name_original,sum_loss_generation,sum_loss_classification,list_maps_generation
 
 
 def evaluate(model, dataloader, criterion, device,epoch=1,args=None):
@@ -170,7 +194,12 @@ def evaluate(model, dataloader, criterion, device,epoch=1,args=None):
 
     list_depth_map_original = []
     list_label_name_original = []
-    
+
+    sum_loss_generation     = 0
+    sum_loss_classification = 0
+
+    list_maps_generation = []
+
     with tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Val   Epoch {epoch}:',bar_format='{desc:<18.23}{percentage:3.0f}%|{bar:20}{r_bar}') as tepoch:
         for i, data in tepoch:
 
@@ -193,11 +222,25 @@ def evaluate(model, dataloader, criterion, device,epoch=1,args=None):
                 labels = labels_total[j]
                 videos_name = videos_name_total[j]
 
-                labels = labels.unsqueeze(0)
-                with torch.no_grad():
-                    outputs = model(inputs).expand(1, -1, -1)
-                loss = criterion(outputs[0], labels[0])
+                labels = labels.unsqueeze(0)                
+
+                if args.model_name == "generative_class_residual":
+                    with torch.no_grad():
+                        outputs,tgt,generation = model(inputs)
+                        outputs = outputs.expand(1, -1, -1)
+
+                    loss_classification = criterion[0](outputs[0], labels[0])
+                    loss_generation     = torch.sqrt(criterion[1](tgt,generation))
+                    loss = loss_generation+loss_classification*0.2
+                    if i==0 and j<6:
+                        list_maps_generation.append([tgt,generation])
+                else:
+                    with torch.no_grad():
+                        outputs = model(inputs).expand(1, -1, -1)
+                    loss = criterion(outputs[0], labels[0])
+                                    
                 label_original = int(labels[0][0])
+
                 if torch.isnan(loss):
                     if j<2:
                         print(f"NaN loss detected at iteration {i+1}, {j+1}. Skipping this iteration.")
@@ -208,6 +251,10 @@ def evaluate(model, dataloader, criterion, device,epoch=1,args=None):
                     labels_predicted.append(-1)
                     labels_original.append(label_original)
                     continue  # Otra opción podría ser detener el bucle o el entrenamiento aquí
+
+                if args.model_name == "generative_class_residual":
+                    sum_loss_generation     += loss_generation.item()
+                    sum_loss_classification += loss_classification.item()
 
                 running_loss += loss.item()
 
@@ -227,11 +274,19 @@ def evaluate(model, dataloader, criterion, device,epoch=1,args=None):
                 stats[label_original][1] += 1
                 pred_all += 1
                 #tqdm.tqdm.write(f"ID:{i+1} IDaug:{j+1} | Loss: {running_loss/pred_all} Acc: {pred_correct / pred_all}")
-                tepoch.set_postfix(id_aug=j+1,m_loss=running_loss/pred_all,m_acc=pred_correct / pred_all)
+                if args.model_name == "generative_class_residual":
+                    tepoch.set_postfix(id_aug=j+1,m_loss=running_loss/pred_all,m_acc=pred_correct / pred_all,
+                                       m_loss_gen=sum_loss_generation/pred_all,m_loss_acc=sum_loss_classification/pred_all)
+                else:
+                    tepoch.set_postfix(id_aug=j+1,m_loss=running_loss/pred_all,m_acc=pred_correct / pred_all)
 
     pred_all= 1 if pred_all == 0 else pred_all
     val_loss = None if running_loss == 0 else running_loss/pred_all
-    return val_loss, (pred_top_5 / pred_all), stats,labels_original,labels_predicted,list_depth_map_original,list_label_name_original
+
+    sum_loss_generation     = sum_loss_generation/pred_all
+    sum_loss_classification = sum_loss_classification/pred_all
+
+    return val_loss, (pred_top_5 / pred_all), stats,labels_original,labels_predicted,list_depth_map_original,list_label_name_original,sum_loss_generation,sum_loss_classification,list_maps_generation
 
 
 def evaluate_top_k(model, dataloader, device, k=5):

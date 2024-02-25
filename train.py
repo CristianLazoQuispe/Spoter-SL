@@ -1,10 +1,18 @@
 
 import os
+import os
+os.environ['CUDA_LAUNCH_BLOCKING'] = "1" 
+os.environ["PYTORCH_USE_CUDA_DSA"] = "1"
+
 import json
 import argparse
 import random
 import logging
 import torch
+
+torch.backends.cuda.enable_mem_efficient_sdp(False)
+torch.backends.cuda.enable_flash_sdp(False)
+torch.backends.cuda.enable_math_sdp(True)
 
 import pandas as pd
 import numpy as np
@@ -273,7 +281,8 @@ def train(args):
 
         key_parts = []
         for k, v in vars(args).items():
-            key_parts.append(f"{k}_{v}")
+            if k!="resume":
+                key_parts.append(f"{k}_{v}")
 
         key = "".join(key_parts) 
         # Crear hash final
@@ -539,10 +548,21 @@ def train(args):
         class_weight = torch.FloatTensor(factors).to(device)
         print("\\\\\\"*20)
         print("class_weight:",class_weight)
-        cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing, weight=class_weight)
+        if args.model_name == "generative_class_residual":
+            cel_criterion = [None,None]
+            cel_criterion[0] = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing, weight=class_weight)
+
+        else:
+            cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing, weight=class_weight)
     else:
-        cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)#, weight=class_weight)
+        if args.model_name == "generative_class_residual":
+            cel_criterion = [None,None]
+            cel_criterion[0] = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)#, weight=class_weight)
+        else:
+            cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)#, weight=class_weight)
     #cel_criterion = nn.CrossEntropyLoss()
+    if args.model_name == "generative_class_residual":
+        cel_criterion[1] = nn.MSELoss()
     
     previous_val_loss = 0
     previous_val_acc  = 0 
@@ -564,6 +584,7 @@ def train(args):
 
     print("args.model_name",args.model_name)
     print("args.script_run_model",args.script_run_model)
+    print("step:",step)
 
     epoch = epoch_start
     train_loss = np.inf
@@ -579,7 +600,7 @@ def train(args):
 
         current_lr = sgd_optimizer.param_groups[0]["lr"]
         current_weight_decay = sgd_optimizer.param_groups[0]['weight_decay']
-        train_loss,train_stats,train_labels_original,train_labels_predicted,list_depth_map_train,list_label_name_train = train_epoch(slrt_model, train_loader, 
+        train_loss,train_stats,train_labels_original,train_labels_predicted,list_depth_map_train,list_label_name_train,sum_loss_generation_train,sum_loss_classification_train,list_maps_generation_train = train_epoch(slrt_model, train_loader, 
         cel_criterion, sgd_optimizer,device,epoch=epoch,args=args,grad_scaler=grad_scaler)
         
         train_acc   = f1_score(train_labels_original, train_labels_predicted, average='micro',zero_division=0)
@@ -591,7 +612,7 @@ def train(args):
 
         if val_loader:
             slrt_model.train(False)
-            val_loss, val_acc_top5, val_stats,val_labels_original,val_labels_predicted,list_depth_map_val,list_label_name_val = evaluate(slrt_model, val_loader, cel_criterion, device,epoch=epoch,args=args)
+            val_loss, val_acc_top5, val_stats,val_labels_original,val_labels_predicted,list_depth_map_val,list_label_name_val,sum_loss_generation_val,sum_loss_classification_val,list_maps_generation_val = evaluate(slrt_model, val_loader, cel_criterion, device,epoch=epoch,args=args)
             slrt_model.train(True)
 
             val_acc           = f1_score(val_labels_original, val_labels_predicted, average='micro',zero_division=0)
@@ -664,6 +685,13 @@ def train(args):
                 'total_time':total_time
             }
 
+            if args.model_name == "generative_class_residual":
+                log_values['train_loss_gen'] = sum_loss_generation_train
+                log_values['train_loss_acc'] = sum_loss_classification_train
+
+                log_values['val_loss_gen'] = sum_loss_generation_val
+                log_values['val_loss_acc'] = sum_loss_classification_val
+
         if args.scheduler == 'steplr':
             lr_scheduler.step()
 
@@ -688,8 +716,35 @@ def train(args):
                 accuracy_metric_name = f'val_acc_{gloss_name}'
                 log_values[accuracy_metric_name] = row['val_gloss_acc']
         """
+        if epoch%1000 == 0 or epoch ==1:
+            if args.draw_points:
+                list_images_train,filename_train = drawer.get_video_frames_25_glosses_batch(list_depth_map_train,list_label_name_train,suffix='train',save_gif=True)
+                print("sending gif")
+                #wandb.log({"train_video": wandb.Video(filename_train, fps=1, format="mp4")})
 
+                list_images_val,filename_val   = drawer.get_video_frames_25_glosses_batch(list_depth_map_val,list_label_name_val,suffix='val',save_gif=True)
+                print("sending gif")
+                if args.use_wandb:
+                    if val_loader:
+                        wandb.log({"gloss_train_video": wandb.Video(filename_train, format="gif")}, step=step)
+                        wandb.log({"gloss_val_video": wandb.Video(filename_val, format="gif")}, step=step)
+                        #wandb.log({"val_video": wandb.Video(filename_val, fps=1,format="mp4")})
+        print("epoch:",epoch)
+        if args.model_name == "generative_class_residual":
+            if epoch%10 == 0 or epoch ==1:
+                list_images_gen_train,filename_gen_train = drawer.get_image_generation(list_maps_generation_train,suffix='train',save_image=True,folder = model_save_folder_path + "/")
+                list_images_gen_val,filename_gen_val     = drawer.get_image_generation(list_maps_generation_val,suffix='val',save_image=True,folder = model_save_folder_path + "/")
+                print("filename_gen_train:",filename_gen_train)
+                print("filename_gen_val  :",filename_gen_val)
+                if args.use_wandb:
+                    print("sending image Generation")
+                    wandb.log({"train_gen_images": wandb.Image(filename_gen_train,caption="train generation images")},step=step)
+                    wandb.log({"val_gen_images": wandb.Image(filename_gen_val,caption="val generation images")},step=step)
 
+                #time.sleep(0.001)
+                #os.remove(filename_gen_train)
+                #time.sleep(0.001) 
+                #os.remove(filename_gen_val)
             
         # Save checkpoints if they are best in the current subset
         if args.save_checkpoints:
@@ -776,19 +831,7 @@ def train(args):
                 
                 checkpoint_index += 1
 
-        if epoch%1000 == 0:
-            if args.draw_points:
-                list_images_train,filename_train = drawer.get_video_frames_25_glosses_batch(list_depth_map_train,list_label_name_train,suffix='train',save_gif=True)
-                print("sending gif")
-                #wandb.log({"train_video": wandb.Video(filename_train, fps=1, format="mp4")})
 
-                list_images_val,filename_val   = drawer.get_video_frames_25_glosses_batch(list_depth_map_val,list_label_name_val,suffix='val',save_gif=True)
-                print("sending gif")
-                if args.use_wandb:
-                    if val_loader:
-                        wandb.log({"gloss_train_video": wandb.Video(filename_train, format="gif")})
-                        wandb.log({"gloss_val_video": wandb.Video(filename_val, format="gif")})
-                        #wandb.log({"val_video": wandb.Video(filename_val, fps=1,format="mp4")})
 
         if epoch%100 == 0:
 

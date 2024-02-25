@@ -3,7 +3,7 @@ from .models.spoter_model1 import SPOTER1
 from .models.spoter_model2 import SPOTER2
 from .models.spoter_model3 import SPOTER3
 from .models.spoter_model4 import SPOTER4
-
+from .models.spoter_model5 import SPOTER5
 
 def get_slrt_model(args):
 
@@ -140,7 +140,7 @@ def get_slrt_model(args):
 
     elif args.model_name == "transformer_residual":
         print("USING SPOTER   Transformer Residual : encoder ResiDual + decoder ResiDual")
-        slrt_model = SPOTER4(num_classes=args.num_classes, num_rows=args.num_rows,
+        slrt_model = SPOTER4(num_classes=args.num_classes,
                             hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
                             num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
                             dim_feedforward_encoder=args.dim_feedforward_encoder,
@@ -149,7 +149,26 @@ def get_slrt_model(args):
         args.norm_first = None
         args.freeze_decoder_layers = None
         args.has_mlp = None
-        args.script_run_model = f""" SPOTER4(num_classes={args.num_classes}, num_rows={args.num_rows},
+        args.script_run_model = f""" SPOTER4(num_classes={args.num_classes},
+                            hidden_dim={args.hidden_dim}, num_heads={args.num_heads}, 
+                            num_layers_1={args.num_layers_1}, num_layers_2={args.num_layers_2}, 
+                            dim_feedforward_encoder={args.dim_feedforward_encoder},
+                            dim_feedforward_decoder={args.dim_feedforward_decoder},dropout={args.dropout})"""
+
+    ############################### MODELOS New Model Generative+Classification with ResiDual Connections ##################################################
+
+    elif args.model_name == "generative_class_residual":
+        print("USING SPOTER  New Model Generative+Classification with ResiDual Connections")
+        slrt_model = SPOTER5(num_classes=args.num_classes,
+                            hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
+                            num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
+                            dim_feedforward_encoder=args.dim_feedforward_encoder,
+                            dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout
+                            )
+        args.norm_first = None
+        args.freeze_decoder_layers = None
+        args.has_mlp = None
+        args.script_run_model = f""" SPOTER5(num_classes={args.num_classes},
                             hidden_dim={args.hidden_dim}, num_heads={args.num_heads}, 
                             num_layers_1={args.num_layers_1}, num_layers_2={args.num_layers_2}, 
                             dim_feedforward_encoder={args.dim_feedforward_encoder},
