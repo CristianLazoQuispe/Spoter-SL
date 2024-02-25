@@ -10,6 +10,12 @@ import os
 import random
 import time
 
+import cv2
+from PIL import Image, ImageDraw, ImageFont
+import numpy as np
+
+
+
 class drawing:
 
     def __init__(self,w = 256,h = 256,path_points= '',radius=1):
@@ -54,6 +60,20 @@ class drawing:
     
         return img
     
+    def put_text(self,img,position = (200, 20),text=''):
+        # Crear una imagen PIL desde un array numpy uint8
+        pil_img = Image.fromarray(img, 'RGB')
+        draw = ImageDraw.Draw(pil_img)
+
+        font = ImageFont.truetype("Src/datasets/arial.ttf", 16)
+        color = (0, 255, 0)  # Color blanco
+        
+        # Dibujar el texto en la imagen
+        draw.text(position, text, font=font, fill=color)
+        # Convertir la imagen PIL de vuelta a un array numpy uint8
+        img = np.array(pil_img)
+        return img
+    
     # Shows points with connections
     def draw_lines(self,keypoints, text_left='', text_right=''):
         # This variable is used to draw points conections
@@ -70,11 +90,13 @@ class drawing:
     
         # To print the text
         if text_right!="":
-            img = cv2.putText(img, text_right, (200, 20), cv2.FONT_HERSHEY_SIMPLEX, 
-                              fontScale, color, thickness, cv2.LINE_AA)
+            #img = cv2.putText(img, text_right, (200, 20), cv2.FONT_HERSHEY_SIMPLEX, 
+            #                  fontScale, color, thickness, cv2.LINE_AA)
+            img = self.put_text(img,position = (200, 20),text=text_right)
         if text_left!="":
-            img = cv2.putText(img, text_left, (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 
-                              fontScale, color, thickness, cv2.LINE_AA)
+            #img = cv2.putText(img, text_left, (20, 20), cv2.FONT_HERSHEY_SIMPLEX, 
+            #                  fontScale, color, thickness, cv2.LINE_AA)
+            img = self.put_text(img,position = (20, 20),text=text_left)
 
         n = len(keypoints)
         #print("keypoints.shape",keypoints.shape)
@@ -149,18 +171,19 @@ class drawing:
             for j in range(3):
                 depth_map     = list_maps_generation_train[i*3 + j][0].view(1, 54, 2)[0]  
                 depth_map_gen = list_maps_generation_train[i*3 + j][1].view(1, 54, 2)[0]
-    
+                label_name    = list_maps_generation_train[i*3 + j][2].split("/")[-1].split(".")[0]
+
                 depth_map     = depth_map+0.5
                 depth_map_gen = depth_map_gen+0.5
 
                 #print("depth_map",depth_map.max(),depth_map.min(),depth_map.std())
                 #print("depth_map_gen",depth_map_gen.max(),depth_map_gen.min(),depth_map_gen.std())
 
-                img = self.draw_lines(depth_map,text_left="",text_right=str(""))                    
+                img = self.draw_lines(depth_map,text_left=label_name,text_right=str("real"))                    
                 axs[i, 2*(j)].set_title(str(i*3 + j)+"-last_frame")
                 axs[i, 2*(j)].imshow(img)
                 axs[i, 2*(j)].axis('off')
-                img = self.draw_lines(depth_map_gen,text_left="",text_right=str(""))                    
+                img = self.draw_lines(depth_map_gen,text_left=label_name,text_right=str("gen"))                    
                 axs[i, 2*(j)+1].set_title(str(i*3 + j)+"-last_frame_gen")
                 axs[i, 2*(j)+1].imshow(img)
                 axs[i, 2*(j)+1].axis('off')

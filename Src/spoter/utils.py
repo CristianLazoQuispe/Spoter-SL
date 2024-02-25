@@ -66,7 +66,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                         loss_generation     = torch.sqrt(criterion[1](tgt,generation))
                         loss = loss_generation+loss_classification*0.1
                         if i==0 and j<6:
-                            list_maps_generation.append([tgt,generation])
+                            list_maps_generation.append([tgt,generation,videos_name])
 
                     else:
                         outputs = model(inputs).expand(1, -1, -1)
@@ -233,7 +233,7 @@ def evaluate(model, dataloader, criterion, device,epoch=1,args=None):
                     loss_generation     = torch.sqrt(criterion[1](tgt,generation))
                     loss = loss_generation+loss_classification*args.loss_gen_class_factor
                     if i==0 and j<6:
-                        list_maps_generation.append([tgt,generation])
+                        list_maps_generation.append([tgt,generation,videos_name])
                 else:
                     with torch.no_grad():
                         outputs = model(inputs).expand(1, -1, -1)
