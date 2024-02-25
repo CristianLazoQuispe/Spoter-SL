@@ -397,29 +397,33 @@ class SPOTER5(nn.Module):
 
                      
     def forward(self, inputs,show=False):
-
+        show=False
         print("")if show else None
         inputs = inputs+0.5
         #print("inputs.shape",inputs.shape) #inputs.shape torch.Size([28, 54, 2])
         h = torch.unsqueeze(inputs.flatten(start_dim=1), 1).float()
         #h = inputs.flatten(start_dim=1).float()
         print("h.shape",h.shape) if show else None#h.shape torch.Size([28, 1, 108])
-        src = h[:-1,:,:]
-        tgt = h[-1,:,:].unsqueeze(0) 
-        tgt_noise = tgt+ torch.randn(tgt.size(), device=tgt.device)*0.001
+
+
+        src        = h[:-2,:,:] if h.shape[0]>2 else h[:-1,:,:]
+        tgt        = h[-2,:,:].unsqueeze(0) if h.shape[0]>2 else h[-1,:,:].unsqueeze(0)
+        tgt_future = h[-1,:,:].unsqueeze(0) 
+
         print("") if show else None
         print("src.shape",src.shape) if show else None
         print("tgt.shape",tgt.shape) if show else None
         #output = self.transformer(src,tgt)#.transpose(0, 1)
         print("self.positional_encoder(src).shape:",self.positional_encoder(src).shape) if show else None
-        print("self.positional_encoder(src):",self.positional_encoder(src)[0,:,:4]) if show else None
-        print("self.positional_encoder(src):",self.positional_encoder(src)[1,:,:4]) if show else None
-        print("self.positional_encoder(src):",self.positional_encoder(src)[2,:,:4]) if show else None
+        if h.shape[0]>5:
+            print("self.positional_encoder(src):",self.positional_encoder(src)[0,:,:4]) if show else None
+            print("self.positional_encoder(src):",self.positional_encoder(src)[1,:,:4]) if show else None
+            print("self.positional_encoder(src):",self.positional_encoder(src)[2,:,:4]) if show else None
 
         memory = self.transformer.encoder(self.positional_encoder(src))
         print("memory.shape",memory.shape)  if show else None# torch.Size([14, 108])
         print("memory:",memory[0,:,:4].tolist())  if show else None#[0.057049673050642014, -2.7947468757629395, -2.5759713649749756, -1.494513988494873]
-        generation = self.transformer.decoder(tgt_noise, memory) #encoder decoder generation: [0.19776038825511932, -3.6382975578308105, 1.1325629949569702, -0.1620892882347107]
+        generation = self.transformer.decoder(tgt, memory) #encoder decoder generation: [0.19776038825511932, -3.6382975578308105, 1.1325629949569702, -0.1620892882347107]
         generation = torch.sigmoid(generation)
         print("generation.shape",generation.shape)  if show else None# torch.Size([1, 108])
         print("generation:",generation[0,:,:4].tolist())  if show else None#transformer generation: [[0.19776038825511932, -3.6382975578308105, 1.1325629949569702, -0.1620892882347107]]
@@ -432,10 +436,10 @@ class SPOTER5(nn.Module):
         res = self.linear_class_2(h)            
         print("res.shape",res.shape)  if show else None# torch.Size([1, 38])
 
-        tgt = tgt-0.5
+        tgt_future = tgt_future-0.5
         generation= generation-0.5
         #raise
-        return res,tgt,generation
+        return res,tgt_future,generation
 
 
 if __name__ == "__main__":

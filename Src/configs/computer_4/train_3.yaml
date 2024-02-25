@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [Paper2024 fold-5-seed-95-p100v100]
+    values: [P2024 f5-s95-p100v100]
   training_set_path:
     values: [
     "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5"]
@@ -15,11 +15,11 @@ parameters:
   sweep:
     values: [1]
   num_heads:
-    values: [9] # 2 [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
+    values: [2,9] # 2 [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
   num_layers_1:
-    values: [6] # 3 [64,12,8,6,4,2,1]
+    values: [3,6] # 3 [64,12,8,6,4,2,1]
   num_layers_2:
-    values: [6] # 2 [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
+    values: [2,6] # 2 [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
   dim_feedforward_encoder:
     values: [256]
   dim_feedforward_decoder:

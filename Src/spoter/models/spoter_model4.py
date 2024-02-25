@@ -354,13 +354,13 @@ class SPOTER4(nn.Module):
         )
                      
     def forward(self, inputs,show=False):
-        print("")
-        print("inputs.shape",inputs.shape) #inputs.shape torch.Size([28, 54, 2])
+        #print("")
+        #print("inputs.shape",inputs.shape) #inputs.shape torch.Size([28, 54, 2])
         h = torch.unsqueeze(inputs.flatten(start_dim=1), 1).float()
-        print("h.shape",h.shape) #h.shape torch.Size([28, 1, 108])
+        #print("h.shape",h.shape) #h.shape torch.Size([28, 1, 108])
         aux = self.pos + h
         h = self.transformer(aux, self.class_query.unsqueeze(0)).transpose(0, 1)
-        print("h.shape",h.shape) #h.shape torch.Size([28, 1, 108])
+        #print("h.shape",h.shape) #h.shape torch.Size([28, 1, 108])
         h = self.act_relu(h)
         h = self.dropout1(h)
         res = self.linear_class(h)
