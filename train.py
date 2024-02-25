@@ -160,6 +160,9 @@ def get_default_args():
     parser.add_argument("--freeze_decoder_layers", type=int, default=0, help="")
     parser.add_argument("--has_mlp", type=int, default=0, help="")
 
+    parser.add_argument("--loss_class_factor", type=float, default=0.1, help="")
+
+
     parser.add_argument("--batch_name", type=str, default="mean_1",help=" | mean_1:calcula backward en cada batch | mean_2: calcula backward en cada instancia")    
     parser.add_argument("--batch_size", type=int, default=64,help="batch_size ")
     parser.add_argument("--num_workers", type=int, default=8,help="num_workers ")
