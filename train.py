@@ -288,8 +288,15 @@ def train(args):
     if args.models_random_name == '':
         #args.models_random_name = generate_string(10)
 
+        #early_stopping_patience:    values: [2000]
+        #epochs:    values: [20000]
+
         key_parts = []
         for k, v in vars(args).items():
+            if k == "early_stopping_patience":
+                v = 1000
+            if k == "epochs":
+                v = 20000
             if k!="resume":
                 key_parts.append(f"{k}_{v}")
 
