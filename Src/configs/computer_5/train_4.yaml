@@ -1,0 +1,44 @@
+program: train.py
+method: grid
+parameters:
+  experiment_name:
+    values: [GenAu0.2-f5-s95-v100]
+  training_set_path:
+    values: [
+    "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5"]
+  validation_set_path:
+    values: [""]
+  data_fold:
+    values: [5]
+  data_seed:
+    values: [95]
+  sweep:
+    values: [1]
+  num_heads:
+    values: [2,9] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
+  num_layers_1:
+    values: [3,6] # [64,12,8,6,4,2,1]
+  num_layers_2:
+    values: [2,6] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
+  dim_feedforward_encoder:
+    values: [256]
+  dim_feedforward_decoder:
+    values: [1024] #16-2-64
+  loss_gen_class_factor:
+    values: [0.2]
+  device:
+    values: [3]
+  augmentation:
+    values: [1]
+  batch_size:
+    values: [64]
+  early_stopping_patience:
+    values: [2000]
+  epochs:
+    values: [20000]
+  weight_decay_dynamic:
+    values: [0]
+  use_wandb:
+    values: [1]
+  model_name:
+    values : ['generative_class_residual']
