@@ -37,6 +37,7 @@ from Src.spoter.utils import train_epoch, evaluate, generate_csv_result, generat
 from Src.spoter.gaussian_noise import GaussianNoise
 from Src.spoter.gpu import configurar_cuda_visible
 from Src.spoter.optimizer import dynamic_weight_decay
+from Src.spoter.losses import KLDivergence
 
 import wandb
 from torch.nn.utils.rnn import pad_sequence
@@ -55,7 +56,9 @@ import traceback
 
 import pandas as pd
 import time
-
+import torch
+import torch.nn.functional as F
+    
 
 run = None
 model_save_folder_path = None
@@ -161,6 +164,9 @@ def get_default_args():
     parser.add_argument("--has_mlp", type=int, default=0, help="")
 
     parser.add_argument("--loss_gen_class_factor", type=float, default=0.1, help="")
+    parser.add_argument("--loss_gen_gen_factor", type=float, default=1, help="")
+    parser.add_argument("--loss_gen_kld_factor", type=float, default=1, help="")
+
 
 
     parser.add_argument("--batch_name", type=str, default="mean_1",help=" | mean_1:calcula backward en cada batch | mean_2: calcula backward en cada instancia")    
@@ -552,21 +558,22 @@ def train(args):
         print("\\\\\\"*20)
         print("class_weight:",class_weight)
         if args.model_name == "generative_class_residual":
-            cel_criterion = [None,None]
+            cel_criterion = [None,None,None]
             cel_criterion[0] = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing, weight=class_weight)
 
         else:
             cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing, weight=class_weight)
     else:
         if args.model_name == "generative_class_residual":
-            cel_criterion = [None,None]
+            cel_criterion = [None,None,None]
             cel_criterion[0] = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)#, weight=class_weight)
         else:
             cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)#, weight=class_weight)
     #cel_criterion = nn.CrossEntropyLoss()
     if args.model_name == "generative_class_residual":
         cel_criterion[1] = nn.MSELoss()
-    
+        cel_criterion[2] = KLDivergence()
+
     previous_val_loss = 0
     previous_val_acc  = 0 
 
@@ -603,7 +610,7 @@ def train(args):
 
         current_lr = sgd_optimizer.param_groups[0]["lr"]
         current_weight_decay = sgd_optimizer.param_groups[0]['weight_decay']
-        train_loss,train_stats,train_labels_original,train_labels_predicted,list_depth_map_train,list_label_name_train,sum_loss_generation_train,sum_loss_classification_train,list_maps_generation_train = train_epoch(slrt_model, train_loader, 
+        train_loss,train_stats,train_labels_original,train_labels_predicted,list_depth_map_train,list_label_name_train,sum_loss_generation_train,sum_loss_classification_train,sum_loss_kdl_train,list_maps_generation_train = train_epoch(slrt_model, train_loader, 
         cel_criterion, sgd_optimizer,device,epoch=epoch,args=args,grad_scaler=grad_scaler)
         
         train_acc   = f1_score(train_labels_original, train_labels_predicted, average='micro',zero_division=0)
@@ -615,7 +622,7 @@ def train(args):
 
         if val_loader:
             slrt_model.train(False)
-            val_loss, val_acc_top5, val_stats,val_labels_original,val_labels_predicted,list_depth_map_val,list_label_name_val,sum_loss_generation_val,sum_loss_classification_val,list_maps_generation_val = evaluate(slrt_model, val_loader, cel_criterion, device,epoch=epoch,args=args)
+            val_loss, val_acc_top5, val_stats,val_labels_original,val_labels_predicted,list_depth_map_val,list_label_name_val,sum_loss_generation_val,sum_loss_classification_val,sum_loss_kdl_val,list_maps_generation_val = evaluate(slrt_model, val_loader, cel_criterion, device,epoch=epoch,args=args)
             slrt_model.train(True)
 
             val_acc           = f1_score(val_labels_original, val_labels_predicted, average='micro',zero_division=0)
@@ -695,6 +702,9 @@ def train(args):
                 log_values['val_loss_gen'] = sum_loss_generation_val
                 log_values['val_loss_acc'] = sum_loss_classification_val
 
+                log_values['train_loss_kld'] = sum_loss_kdl_train
+                log_values['val_loss_kld'] = sum_loss_kdl_val
+
         if args.scheduler == 'steplr':
             lr_scheduler.step()
 
@@ -734,7 +744,7 @@ def train(args):
                         #wandb.log({"val_video": wandb.Video(filename_val, fps=1,format="mp4")})
         print("epoch:",epoch)
         if args.model_name == "generative_class_residual":
-            if epoch%10 == 0 or epoch ==1:
+            if epoch%100 == 0 or epoch ==1:
                 list_images_gen_train,filename_gen_train = drawer.get_image_generation(list_maps_generation_train,suffix='train',save_image=True,folder = model_save_folder_path + "/")
                 list_images_gen_val,filename_gen_val     = drawer.get_image_generation(list_maps_generation_val,suffix='val',save_image=True,folder = model_save_folder_path + "/")
                 print("filename_gen_train:",filename_gen_train)

@@ -17,13 +17,19 @@ parameters:
   num_heads:
     values: [2,9] # [54,27,9,3,1] 27,18,9,6,3,2,1] este debe ser un divisor de hidden_dim  : nhead
   num_layers_1:
-    values: [3,6] # [64,12,8,6,4,2,1]
+    values: [3,6,9] # [64,12,8,6,4,2,1]
   num_layers_2:
-    values: [2,6] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
+    values: [2,6,9] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
   dim_feedforward_encoder:
     values: [256]
   dim_feedforward_decoder:
     values: [1024] #16-2-64
+  loss_gen_class_factor:
+    values: [0.1]
+  loss_gen_gen_factor:
+    values: [1]
+  loss_gen_kld_factor:
+    values: [1]
   device:
     values: [0]
   augmentation:

@@ -29,6 +29,8 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
 
     sum_loss_generation     = 0
     sum_loss_classification = 0
+    sum_loss_kdl = 0
+
     list_maps_generation = []
 
     with tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Train Epoch {epoch }:',bar_format='{desc:<18.23}{percentage:3.0f}%|{bar:20}{r_bar}') as tepoch:
@@ -64,7 +66,10 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
 
                         loss_classification = criterion[0](outputs[0], labels[0])
                         loss_generation     = torch.sqrt(criterion[1](tgt,generation))
-                        loss = loss_generation+loss_classification*0.1
+                        loss_kdl            = criterion[2].compute_kld(tgt,generation)
+
+                        loss = loss_generation*args.loss_gen_gen_factor+loss_classification*args.loss_gen_class_factor+loss_kdl*args.loss_gen_kld_factor
+
                         if i==0 and j<6:
                             list_maps_generation.append([tgt,generation,videos_name])
 
@@ -96,6 +101,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                 if args.model_name == "generative_class_residual":
                     sum_loss_generation     += loss_generation.item()
                     sum_loss_classification += loss_classification.item()
+                    sum_loss_kdl            += loss_kdl.item()
 
                 running_loss += loss.item()
                 if batch_name!='':
@@ -147,10 +153,11 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                 #tqdm.tqdm.write(f"ID:{i+1} IDaug:{j+1} | Loss: {running_loss/pred_all} Acc: {pred_correct / pred_all}")
                 #tepoch.set_postfix(id_aug=j+1,m_loss=running_loss/pred_all,m_acc=pred_correct / pred_all)
                 if args.model_name == "generative_class_residual":
-                    tepoch.set_postfix(id_aug=j+1,m_loss=running_loss/pred_all,m_acc=pred_correct / pred_all,
-                                       m_loss_gen=sum_loss_generation/pred_all,m_loss_acc=sum_loss_classification/pred_all)
+                    tepoch.set_postfix(id_aug=j+1,loss=running_loss/pred_all,acc=pred_correct / pred_all,
+                                       loss_gen=sum_loss_generation/pred_all,loss_acc=sum_loss_classification/pred_all,
+                                       loss_kdl=sum_loss_kdl/pred_all)
                 else:
-                    tepoch.set_postfix(id_aug=j+1,m_loss=running_loss/pred_all,m_acc=pred_correct / pred_all)
+                    tepoch.set_postfix(id_aug=j+1,loss=running_loss/pred_all,acc=pred_correct / pred_all)
 
     # Asegurarse de realizar el último paso de retropropagación si es necesario
     if batch_name =='mean_1':
@@ -177,8 +184,9 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
     torch.cuda.empty_cache()
     sum_loss_generation     = sum_loss_generation/pred_all
     sum_loss_classification = sum_loss_classification/pred_all
+    sum_loss_kdl = sum_loss_kdl/pred_all
 
-    return train_loss,stats,labels_original,labels_predicted,list_depth_map_original,list_label_name_original,sum_loss_generation,sum_loss_classification,list_maps_generation
+    return train_loss,stats,labels_original,labels_predicted,list_depth_map_original,list_label_name_original,sum_loss_generation,sum_loss_classification,sum_loss_kdl,list_maps_generation
 
 
 def evaluate(model, dataloader, criterion, device,epoch=1,args=None):
@@ -197,6 +205,7 @@ def evaluate(model, dataloader, criterion, device,epoch=1,args=None):
 
     sum_loss_generation     = 0
     sum_loss_classification = 0
+    sum_loss_kdl = 0
 
     list_maps_generation = []
 
@@ -231,7 +240,9 @@ def evaluate(model, dataloader, criterion, device,epoch=1,args=None):
 
                     loss_classification = criterion[0](outputs[0], labels[0])
                     loss_generation     = torch.sqrt(criterion[1](tgt,generation))
-                    loss = loss_generation+loss_classification*args.loss_gen_class_factor
+                    loss_kdl            = criterion[2].compute_kld(tgt,generation)
+                    loss = loss_generation*args.loss_gen_gen_factor+loss_classification*args.loss_gen_class_factor+loss_kdl*args.loss_gen_kld_factor
+
                     if i==0 and j<6:
                         list_maps_generation.append([tgt,generation,videos_name])
                 else:
@@ -255,7 +266,7 @@ def evaluate(model, dataloader, criterion, device,epoch=1,args=None):
                 if args.model_name == "generative_class_residual":
                     sum_loss_generation     += loss_generation.item()
                     sum_loss_classification += loss_classification.item()
-
+                    sum_loss_kdl            += loss_kdl.item()
                 running_loss += loss.item()
 
                 label_predicted = int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2)))
@@ -275,18 +286,20 @@ def evaluate(model, dataloader, criterion, device,epoch=1,args=None):
                 pred_all += 1
                 #tqdm.tqdm.write(f"ID:{i+1} IDaug:{j+1} | Loss: {running_loss/pred_all} Acc: {pred_correct / pred_all}")
                 if args.model_name == "generative_class_residual":
-                    tepoch.set_postfix(id_aug=j+1,m_loss=running_loss/pred_all,m_acc=pred_correct / pred_all,
-                                       m_loss_gen=sum_loss_generation/pred_all,m_loss_acc=sum_loss_classification/pred_all)
+                    tepoch.set_postfix(id_aug=j+1,loss=running_loss/pred_all,acc=pred_correct / pred_all,
+                                       loss_gen=sum_loss_generation/pred_all,loss_acc=sum_loss_classification/pred_all,
+                                       loss_kdl=sum_loss_kdl/pred_all)
                 else:
-                    tepoch.set_postfix(id_aug=j+1,m_loss=running_loss/pred_all,m_acc=pred_correct / pred_all)
+                    tepoch.set_postfix(id_aug=j+1,loss=running_loss/pred_all,acc=pred_correct / pred_all)
 
     pred_all= 1 if pred_all == 0 else pred_all
     val_loss = None if running_loss == 0 else running_loss/pred_all
 
     sum_loss_generation     = sum_loss_generation/pred_all
     sum_loss_classification = sum_loss_classification/pred_all
+    sum_loss_kdl = sum_loss_kdl/pred_all
 
-    return val_loss, (pred_top_5 / pred_all), stats,labels_original,labels_predicted,list_depth_map_original,list_label_name_original,sum_loss_generation,sum_loss_classification,list_maps_generation
+    return val_loss, (pred_top_5 / pred_all), stats,labels_original,labels_predicted,list_depth_map_original,list_label_name_original,sum_loss_generation,sum_loss_classification,sum_loss_kdl,list_maps_generation
 
 
 def evaluate_top_k(model, dataloader, device, k=5):
