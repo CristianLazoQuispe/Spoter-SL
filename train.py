@@ -297,6 +297,8 @@ def train(args):
                 v = 1000
             if k == "epochs":
                 v = 20000
+            if k == "device":
+                v = 0
             if k!="resume":
                 key_parts.append(f"{k}_{v}")
 
