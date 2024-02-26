@@ -33,7 +33,7 @@ from Src.datasets.drawing import drawing
 
 
 from Src.spoter.load_model import get_slrt_model
-from Src.spoter.utils import train_epoch, evaluate, generate_csv_result, generate_csv_accuracy
+from Src.spoter.utils import train_epoch, evaluate
 from Src.spoter.gaussian_noise import GaussianNoise
 from Src.spoter.gpu import configurar_cuda_visible
 from Src.spoter.optimizer import dynamic_weight_decay
@@ -166,7 +166,8 @@ def get_default_args():
     parser.add_argument("--loss_gen_class_factor", type=float, default=0.1, help="")
     parser.add_argument("--loss_gen_gen_factor", type=float, default=1, help="")
     parser.add_argument("--loss_gen_kld_factor", type=float, default=1, help="")
-
+    parser.add_argument("--loss_gen_kld_factor_dynamic",type=int,default=1, help="if kld will improve over epochs")
+    parser.add_argument("--loss_gen_kld_factor_dynamic_max",type=float,default=10, help="if kld will improve over epochs")
 
 
     parser.add_argument("--batch_name", type=str, default="mean_1",help=" | mean_1:calcula backward en cada batch | mean_2: calcula backward en cada instancia")    
@@ -595,7 +596,11 @@ def train(args):
     step = None
     if args.use_wandb:
         step = run.summary.get("_step")
-    
+        if step is None:
+            try : 
+                step = int(checkpoint["wandb_step"])
+            except:
+                pass
     step = 0 if step is None else step+1
 
     print("epoch_start, args.epochs",epoch_start, args.epochs)
@@ -611,16 +616,21 @@ def train(args):
     current_weight_decay = sgd_optimizer.param_groups[0]['weight_decay']
     
     cnt_val_none = 0
+    beta = 1
 
     for epoch in range(epoch_start, args.epochs+1):
 
         #sgd_optimizer = lr_lambda(epoch, sgd_optimizer)
         start_time = time.time()
 
+        if args.loss_gen_kld_factor_dynamic == 1:
+            # it increase the beta factor to loss_gen_kld_factor_dynamic_max in the last epoch
+            beta = min(1+ (epoch-1)*(args.loss_gen_kld_factor_dynamic_max-1)/(args.epochs-1),10)
+
         current_lr = sgd_optimizer.param_groups[0]["lr"]
         current_weight_decay = sgd_optimizer.param_groups[0]['weight_decay']
         train_loss,train_stats,train_labels_original,train_labels_predicted,list_depth_map_train,list_label_name_train,sum_loss_generation_train,sum_loss_classification_train,sum_loss_kdl_train,list_maps_generation_train = train_epoch(slrt_model, train_loader, 
-        cel_criterion, sgd_optimizer,device,epoch=epoch,args=args,grad_scaler=grad_scaler)
+        cel_criterion, sgd_optimizer,device,epoch=epoch,args=args,grad_scaler=grad_scaler,beta=beta)
         
         train_acc   = f1_score(train_labels_original, train_labels_predicted, average='micro',zero_division=0)
 
@@ -631,7 +641,7 @@ def train(args):
 
         if val_loader:
             slrt_model.train(False)
-            val_loss, val_acc_top5, val_stats,val_labels_original,val_labels_predicted,list_depth_map_val,list_label_name_val,sum_loss_generation_val,sum_loss_classification_val,sum_loss_kdl_val,list_maps_generation_val = evaluate(slrt_model, val_loader, cel_criterion, device,epoch=epoch,args=args)
+            val_loss, val_acc_top5, val_stats,val_labels_original,val_labels_predicted,list_depth_map_val,list_label_name_val,sum_loss_generation_val,sum_loss_classification_val,sum_loss_kdl_val,list_maps_generation_val = evaluate(slrt_model, val_loader, cel_criterion, device,epoch=epoch,args=args,beta=beta)
             slrt_model.train(True)
 
             val_acc           = f1_score(val_labels_original, val_labels_predicted, average='micro',zero_division=0)
@@ -713,6 +723,7 @@ def train(args):
 
                 log_values['train_loss_kld'] = sum_loss_kdl_train
                 log_values['val_loss_kld'] = sum_loss_kdl_val
+                log_values['beta_loss_kld'] = beta
 
         if args.scheduler == 'steplr':
             lr_scheduler.step()

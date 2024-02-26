@@ -5,7 +5,7 @@ import csv
 import wandb
 import tqdm
 
-def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_norm=12.0,epoch=1,args=None,grad_scaler=None):
+def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_norm=12.0,epoch=1,args=None,grad_scaler=None,beta=1):
 
     k = 5
     
@@ -32,8 +32,8 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
     sum_loss_kdl = 0
 
     list_maps_generation = []
-
     with tqdm.tqdm(enumerate(dataloader), total=len(dataloader), desc=f'Train Epoch {epoch }:',bar_format='{desc:<18.23}{percentage:3.0f}%|{bar:20}{r_bar}') as tepoch:
+    
         for i, data in tepoch:
             #print("data:",data)
             inputs_total, labels_total, videos_name_total = data
@@ -67,8 +67,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                         loss_classification = criterion[0](outputs[0], labels[0])
                         loss_generation     = torch.sqrt(criterion[1](tgt,generation))
                         loss_kdl            = criterion[2].compute_kld(tgt,generation)
-
-                        loss = loss_generation*args.loss_gen_gen_factor+loss_classification*args.loss_gen_class_factor+loss_kdl*args.loss_gen_kld_factor
+                        loss = loss_generation*args.loss_gen_gen_factor+loss_classification*args.loss_gen_class_factor+loss_kdl*args.loss_gen_kld_factor*beta
 
                         if i==0 and j<6:
                             list_maps_generation.append([tgt,generation,videos_name])
@@ -189,7 +188,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
     return train_loss,stats,labels_original,labels_predicted,list_depth_map_original,list_label_name_original,sum_loss_generation,sum_loss_classification,sum_loss_kdl,list_maps_generation
 
 
-def evaluate(model, dataloader, criterion, device,epoch=1,args=None):
+def evaluate(model, dataloader, criterion, device,epoch=1,args=None,beta=1):
 
     pred_correct, pred_top_5,  pred_all = 0, 0, 0
     running_loss = 0.0
@@ -241,7 +240,7 @@ def evaluate(model, dataloader, criterion, device,epoch=1,args=None):
                     loss_classification = criterion[0](outputs[0], labels[0])
                     loss_generation     = torch.sqrt(criterion[1](tgt,generation))
                     loss_kdl            = criterion[2].compute_kld(tgt,generation)
-                    loss = loss_generation*args.loss_gen_gen_factor+loss_classification*args.loss_gen_class_factor+loss_kdl*args.loss_gen_kld_factor
+                    loss = loss_generation*args.loss_gen_gen_factor+loss_classification*args.loss_gen_class_factor+loss_kdl*args.loss_gen_kld_factor*beta
 
                     if i==0 and j<6:
                         list_maps_generation.append([tgt,generation,videos_name])

@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [Gen10Au-f5-s95-v100]
+    values: [Gen1-0-0-f5-s95-p100nvlink]
   training_set_path:
     values: [
     "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5"]
@@ -21,19 +21,19 @@ parameters:
   num_layers_2:
     values: [2,6,9] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
   dim_feedforward_encoder:
-    values: [2048,512,128,64]
+    values: [1024,512,256]
   dim_feedforward_decoder:
-    values: [2048,512,128,64]
+    values: [128,64,32,1024]
   loss_gen_class_factor:
-    values: [10]
+    values: [1]
   loss_gen_gen_factor:
-    values: [1]
+    values: [0]
   loss_gen_kld_factor:
-    values: [1]
+    values: [0]
   device:
     values: [3]
   augmentation:
-    values: [1]
+    values: [0]
   batch_size:
     values: [64]
   early_stopping_patience:
