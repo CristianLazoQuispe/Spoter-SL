@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [Paper2024 fold-5-seed-95-p100v100]
+    values: [Paper2024-f5-s95-v100]
   training_set_path:
     values: [
     "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5"]
@@ -25,9 +25,9 @@ parameters:
   dim_feedforward_decoder:
     values: [1024] #16-2-64
   device:
-    values: [0]
-  augmentation:
     values: [1]
+  augmentation:
+    values: [0]
   batch_size:
     values: [64]
   early_stopping_patience:
@@ -39,7 +39,7 @@ parameters:
   use_wandb:
     values: [1]
   model_name:
-    values : ['encoder_mlp','encoder_residual','encoder_residual_mlp']
+    values : ['encoder_residual']
 
 #'base_freeze','base','base_freeze_attn','base_attn','encoder','encoder_mlp','encoder_residual','encoder_residual_mlp','transformer_residual'
 
