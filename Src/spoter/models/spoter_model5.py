@@ -302,22 +302,22 @@ class SPOTERTransformerDecoderLayer(nn.TransformerDecoderLayer):
 
 import math
 
-class PositionalEmbedding(nn.Module):
+class PositionalEmbedding_old(nn.Module):
     def __init__(self,max_seq_len,embed_model_dim):
         """
         Args:
             seq_len: length of input sequence
             embed_model_dim: demension of embedding
         """
-        super(PositionalEmbedding, self).__init__()
+        super(PositionalEmbedding_old, self).__init__()
         self.embed_dim = embed_model_dim
 
         pe = torch.zeros(max_seq_len,self.embed_dim)
         for pos in range(max_seq_len):
             for i in range(0,self.embed_dim,2):
-                pe[pos, i] = math.sin(pos / (10000 ** ((2 * i)/self.embed_dim)))
+                pe[pos, i]     = math.sin(pos / (10000 ** ((2 * i)/self.embed_dim)))
                 pe[pos, i + 1] = math.cos(pos / (10000 ** ((2 * (i + 1))/self.embed_dim)))
-        pe = pe.unsqueeze(0)
+        #pe = pe.unsqueeze(0)
         self.register_buffer('pe', pe)
 
 
@@ -329,10 +329,44 @@ class PositionalEmbedding(nn.Module):
             x: output
         """      
         #add constant to embedding
-        seq_len = x.size(1)
-        x = x + torch.autograd.Variable(self.pe[:,:seq_len], requires_grad=False)
+        seq_len = x.size(0)
+        #seq_len = x.size(1)
+        
+        #print("x.shape",x.shape)
+        #print("pe.shape:",self.pe.shape)
+        x = x + torch.autograd.Variable(self.pe[:seq_len,:], requires_grad=False)
+        #x = x + torch.autograd.Variable(self.pe[:,:seq_len], requires_grad=False)
         return x
 
+class PositionalEncoding(nn.Module):
+
+    def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        position = torch.arange(max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+       
+        pe = torch.zeros(max_len, d_model)
+        print("position.shape:",position.shape)
+        pe[:,0::2] = torch.sin(position * div_term)#[0::2,:]
+        pe[:,1::2] = torch.cos(position * div_term)#[1::2,:]
+        self.register_buffer('pe', pe)
+
+        
+        #self.pe = torch.autograd.Variable(self.pe, requires_grad=False)
+
+    def forward(self, x: Tensor) -> Tensor:
+        """
+        Arguments:
+            x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``
+        """
+        #print("self.pe.shape:",self.pe.shape)
+        #print("self.pe",self.pe[0,0:4])
+        #print("self.pe",self.pe[1,0:4])
+        x = x + self.pe[:x.size(0),:]
+        return x#self.dropout(x)
+    
 class SPOTER5(nn.Module):
     """
     Implementation of the SPOTER (Sign POse-based TransformER) architecture for sign language recognition from sequence
@@ -348,11 +382,12 @@ class SPOTER5(nn.Module):
         self.pos         = nn.Parameter(torch.rand(1,1, hidden_dim))
         self.class_query = nn.Parameter(torch.rand(1, hidden_dim))
         #https://pytorch.org/docs/stable/generated/torch.nn.Transformer.html
-        self.transformer  = nn.Transformer(d_model=hidden_dim, nhead =num_heads,
-        num_encoder_layers= num_layers_1, 
-        num_decoder_layers= num_layers_2,
-        dim_feedforward = dim_feedforward_encoder,
-        dropout=dropout) # norm_first is not necessary because we change the encoder decoder with dual residual norm
+        
+        #self.transformer  = nn.Transformer(d_model=hidden_dim, nhead =num_heads,
+        #num_encoder_layers= num_layers_1, 
+        #num_decoder_layers= num_layers_2,
+        #dim_feedforward = dim_feedforward_encoder,
+        #dropout=dropout) # norm_first is not necessary because we change the encoder decoder with dual residual norm
 
         self.linear_class = nn.Linear(hidden_dim, num_classes)
 
@@ -362,7 +397,7 @@ class SPOTER5(nn.Module):
 
         self.layer_norm_encoder = nn.LayerNorm(hidden_dim, eps= 1e-5)
 
-        self.transformer.encoder = SPOTERTransformerEncoder(
+        self.encoder = SPOTERTransformerEncoder(
             d_model=hidden_dim,
             encoder_layer = SPOTERTransformerEncoderLayer(
                 d_model=hidden_dim,
@@ -375,7 +410,7 @@ class SPOTER5(nn.Module):
         )
         self.layer_norm_decoder = nn.LayerNorm(hidden_dim, eps= 1e-5)
 
-        self.transformer.decoder = SPOTERTransformerDecoder(
+        self.decoder_gen = SPOTERTransformerDecoder(
             d_model=hidden_dim,
             decoder_layer = SPOTERTransformerDecoderLayer(
                 d_model=hidden_dim,
@@ -386,29 +421,40 @@ class SPOTER5(nn.Module):
             num_layers=num_layers_2,
             norm = self.layer_norm_decoder
         )
-
+        self.decoder_class = SPOTERTransformerDecoder(
+            d_model=hidden_dim,
+            decoder_layer = SPOTERTransformerDecoderLayer(
+                d_model=hidden_dim,
+                nhead=num_heads,
+                dim_feedforward=dim_feedforward_decoder,
+                dropout=dropout, 
+                activation="relu"),
+            num_layers=num_layers_2,
+            norm = self.layer_norm_decoder
+        )
         self.linear_class_1 = nn.Linear(hidden_dim, 64) # 64 to avoid overfitting because hidden_dim is 108
         self.linear_class_2 = nn.Linear(64,num_classes)
         self.act_relu_2 = nn.ReLU()
         self.dropout2 = nn.Dropout(dropout)
 
-        self.positional_encoder = PositionalEmbedding(5000, hidden_dim)
-        self.positional_decoder = PositionalEmbedding(5000, hidden_dim)
+        self.positional_encoder = PositionalEncoding(hidden_dim)
+        self.positional_decoder = PositionalEncoding(hidden_dim)
 
                      
     def forward(self, inputs,show=False):
         show=False
-        print("")if show else None
+        print("") if show else None
         inputs = inputs+0.5
-        #print("inputs.shape",inputs.shape) #inputs.shape torch.Size([28, 54, 2])
-        h = torch.unsqueeze(inputs.flatten(start_dim=1), 1).float()
-        #h = inputs.flatten(start_dim=1).float()
+        print("inputs.shape",inputs.shape) if show else None #inputs.shape torch.Size([28, 54, 2])
+        #h = torch.unsqueeze(inputs.flatten(start_dim=1), 1).float()
+        h = inputs.flatten(start_dim=1).float()
+
         print("h.shape",h.shape) if show else None#h.shape torch.Size([28, 1, 108])
 
 
-        src        = h[:-2,:,:] if h.shape[0]>2 else h[:-1,:,:]
-        tgt        = h[-2,:,:].unsqueeze(0) if h.shape[0]>2 else h[-1,:,:].unsqueeze(0)
-        tgt_future = h[-1,:,:].unsqueeze(0) 
+        src        = h[:-2,:] if h.shape[0]>2 else h[:-1,:]
+        tgt        = h[-2,:].unsqueeze(0) if h.shape[0]>2 else h[-1,:].unsqueeze(0)
+        tgt_future = h[-1,:].unsqueeze(0) 
 
         print("") if show else None
         print("src.shape",src.shape) if show else None
@@ -416,19 +462,20 @@ class SPOTER5(nn.Module):
         #output = self.transformer(src,tgt)#.transpose(0, 1)
         print("self.positional_encoder(src).shape:",self.positional_encoder(src).shape) if show else None
         if h.shape[0]>5:
-            print("self.positional_encoder(src):",self.positional_encoder(src)[0,:,:4]) if show else None
-            print("self.positional_encoder(src):",self.positional_encoder(src)[1,:,:4]) if show else None
-            print("self.positional_encoder(src):",self.positional_encoder(src)[2,:,:4]) if show else None
+            print("self.positional_encoder(src):",src[0,:4],self.positional_encoder(src)[0,:4]) if show else None
+            print("self.positional_encoder(src):",src[1,:4],self.positional_encoder(src)[1,:4]) if show else None
+            print("self.positional_encoder(src):",src[2,:4],self.positional_encoder(src)[2,:4]) if show else None
 
-        memory = self.transformer.encoder(self.positional_encoder(src))
+        memory = self.encoder(self.positional_encoder(src))
         print("memory.shape",memory.shape)  if show else None# torch.Size([14, 108])
-        print("memory:",memory[0,:,:4].tolist())  if show else None#[0.057049673050642014, -2.7947468757629395, -2.5759713649749756, -1.494513988494873]
-        generation = self.transformer.decoder(tgt, memory) #encoder decoder generation: [0.19776038825511932, -3.6382975578308105, 1.1325629949569702, -0.1620892882347107]
+        print("memory:",memory[0,:4].tolist())  if show else None#[0.057049673050642014, -2.7947468757629395, -2.5759713649749756, -1.494513988494873]
+        generation = self.decoder_gen(tgt, memory) #encoder decoder generation: [0.19776038825511932, -3.6382975578308105, 1.1325629949569702, -0.1620892882347107]
+        embedding  = self.decoder_class(self.class_query, memory) #encoder decoder generation: [0.19776038825511932, -3.6382975578308105, 1.1325629949569702, -0.1620892882347107]
         generation = torch.sigmoid(generation)
         print("generation.shape",generation.shape)  if show else None# torch.Size([1, 108])
-        print("generation:",generation[0,:,:4].tolist())  if show else None#transformer generation: [[0.19776038825511932, -3.6382975578308105, 1.1325629949569702, -0.1620892882347107]]
+        print("generation:",generation[0,:4].tolist())  if show else None#transformer generation: [[0.19776038825511932, -3.6382975578308105, 1.1325629949569702, -0.1620892882347107]]
         # we prove that is equal implementation
-        embedding = torch.mean(memory,0)#.unsqueeze(0)
+        #embedding = torch.mean(memory,0)#.unsqueeze(0)
         print("embedding.shape",embedding.shape)  if show else None# torch.Size([1,108])
         h = self.linear_class_1(embedding)
         h = self.act_relu(h)
@@ -453,3 +500,21 @@ if __name__ == "__main__":
 #std inputs: 0.11107357715482585
 
 #python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=1 --dim_feedforward_decoder=1024 --dim_feedforward_encoder=256 --early_stopping_patience=1000 --epochs=101  --model_name=generative_class_residual --num_heads=2 --num_layers_1=3 --num_layers_2=2 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="f5-s95-p100v100-test-spoter5-pruebis" --draw_points=0 --use_wandb=1 --resume=1
+
+"""
+h.shape torch.Size([15, 1, 108])
+
+src.shape torch.Size([13, 1, 108])
+tgt.shape torch.Size([1, 1, 108])
+self.positional_encoder(src).shape: torch.Size([13, 1, 108])
+self.positional_encoder(src): tensor([[0.5020, 1.3591, 0.5232, 1.3152]], device='cuda:0')
+self.positional_encoder(src): tensor([[0.5031, 1.3589, 0.5289, 1.3182]], device='cuda:0')
+self.positional_encoder(src): tensor([[0.5034, 1.3598, 0.5296, 1.3182]], device='cuda:0')
+memory.shape torch.Size([13, 1, 108])
+memory: [[-1.7996032238006592, 1.9307384490966797, 0.34947311878204346, -0.11882045865058899]]
+generation.shape torch.Size([1, 1, 108])
+generation: [[0.26965904235839844, 0.5806722044944763, 0.2910144627094269, 0.8225837349891663]]
+embedding.shape torch.Size([1, 108])
+res.shape torch.Size([1, 38])
+"""
+#datos

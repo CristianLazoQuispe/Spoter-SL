@@ -2,7 +2,7 @@ program: train.py
 method: grid
 parameters:
   experiment_name:
-    values: [Gen0.1-f5-s95-v100]
+    values: [v3gen-1-0-0-f5-s95-p100nvlink]
   training_set_path:
     values: [
     "../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5"]
@@ -21,15 +21,15 @@ parameters:
   num_layers_2:
     values: [2,6,9] # [64,12,8,6,4,2,1] # self.transformer.decoder.num_layers :n_clones
   dim_feedforward_encoder:
-    values: [2048,512,128,64]
+    values: [256]
   dim_feedforward_decoder:
-    values: [2048,512,128,64]
+    values: [1024]
   loss_gen_class_factor:
-    values: [0.1]
+    values: [1]
   loss_gen_gen_factor:
-    values: [1]
+    values: [0]
   loss_gen_kld_factor:
-    values: [1]
+    values: [0]
   device:
     values: [0]
   augmentation:
@@ -46,3 +46,6 @@ parameters:
     values: [1]
   model_name:
     values : ['generative_class_residual']
+
+
+#python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=0 --dim_feedforward_decoder=1024 --dim_feedforward_encoder=256 --early_stopping_patience=5000 --epochs=20000 --experiment_name=TestGEN2 --loss_gen_class_factor=1 --loss_gen_gen_factor=0 --loss_gen_kld_factor=0 --model_name=generative_class_residual --num_heads=2 --num_layers_1=3 --num_layers_2=2 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --use_wandb=1 --validation_set_path= --weight_decay_dynamic=0

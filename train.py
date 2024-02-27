@@ -66,10 +66,12 @@ top_val_f1_weighted = 0
 top_val_f1_weighted_before = 0
 args= None
 is_finished=False
+log_values=None
+step = None
 def finish_process():
     global run,model_save_folder_path
     global top_val_f1_weighted,top_val_f1_weighted_before
-    global args,is_finished
+    global args,is_finished,log_values,step
     """
     function to finish wandb if there is an error in the code or force stop
     """
@@ -79,11 +81,12 @@ def finish_process():
     if top_val_f1_weighted!= top_val_f1_weighted_before:
         try:
             if args.use_wandb:
-
+                log_values = {}
                 print("Sending last table and model")
 
                 df_merged = pd.read_csv(model_save_folder_path + "/df_merged_best.csv")
                 log_values['Compare_table_stats'] =  wandb.Table(dataframe=df_merged)
+                wandb.log(log_values, step=step)
 
                 print("Sending artifact to wandb!")
                 artifact = wandb.Artifact(f'best-model_{run.id}.pth', type='model')
@@ -762,7 +765,7 @@ def train(args):
                         wandb.log({"gloss_train_video": wandb.Video(filename_train, format="gif")}, step=step)
                         wandb.log({"gloss_val_video": wandb.Video(filename_val, format="gif")}, step=step)
                         #wandb.log({"val_video": wandb.Video(filename_val, fps=1,format="mp4")})
-        print("epoch:",epoch)
+        #print("epoch:",epoch)
         if args.model_name == "generative_class_residual":
             if epoch%100 == 0 or epoch ==1:
                 list_images_gen_train,filename_gen_train = drawer.get_image_generation(list_maps_generation_train,suffix='train',save_image=True,folder = model_save_folder_path + "/")
@@ -929,6 +932,7 @@ def train(args):
 
             df_merged = pd.read_csv(model_save_folder_path + "/df_merged_best.csv")
             log_values['Compare_table_stats'] =  wandb.Table(dataframe=df_merged)
+            wandb.log(log_values, step=step)
 
             print("Sending artifact best model to wandb!")
             artifact = wandb.Artifact(f'best-model_{run.id}.pth', type='model')
