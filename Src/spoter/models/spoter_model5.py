@@ -194,7 +194,8 @@ class SPOTERTransformerEncoder(nn.TransformerEncoder):
             output,res = mod((output,res), src_mask=mask, is_causal=is_causal, src_key_padding_mask=src_key_padding_mask_for_layers)
         if self.norm is not None:
             output = self.norm(output)
-        output = output  + self.layer_norm(res)
+       
+        #output = output  + self.layer_norm(res)
 
         return output
 
@@ -229,7 +230,7 @@ class SPOTERTransformerDecoder(nn.TransformerDecoder):
         if self.norm is not None:
             output = self.norm(output)
 
-        output = output  + self.layer_norm(res)
+        #output = output  + self.layer_norm(res)
         return output
 
 class SPOTERTransformerDecoderLayer(nn.TransformerDecoderLayer):
@@ -532,6 +533,8 @@ if __name__ == "__main__":
 #std inputs: 0.11107357715482585
 
 #python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=1 --dim_feedforward_decoder=2048 --dim_feedforward_encoder=256 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual --num_heads=2 --num_layers_1=3 --num_layers_2=2 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="v4gen test-onlyClassPos" --draw_points=0 --use_wandb=1 --resume=1
+
+#python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=1 --dim_feedforward_decoder=2048 --dim_feedforward_encoder=256 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual --num_heads=2 --num_layers_1=3 --num_layers_2=2 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="v4gen test-onlyClassPosNoRES" --draw_points=0 --use_wandb=1 --resume=1
 
 """
 h.shape torch.Size([15, 1, 108])
