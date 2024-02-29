@@ -338,15 +338,21 @@ class PositionalEmbedding_old(nn.Module):
         #x = x + torch.autograd.Variable(self.pe[:,:seq_len], requires_grad=False)
         return x
 
+from torch.autograd import Variable
+
+
+
 class PositionalEncoding(nn.Module):
 
-    def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):
+    def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 200):
         super().__init__()
         self.dropout = nn.Dropout(p=dropout)
+        self.d_model = d_model
 
         position = torch.arange(max_len).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
-       
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000) / d_model))
+       # div_term = torch.exp(torch.arange(0, d_model, 2) * -(math.log(n) / d_model))
+
         pe = torch.zeros(max_len, d_model)
         print("position.shape:",position.shape)
         pe[:,0::2] = torch.sin(position * div_term)#[0::2,:]
@@ -362,10 +368,30 @@ class PositionalEncoding(nn.Module):
             x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``
         """
         #print("self.pe.shape:",self.pe.shape)
-        #print("self.pe",self.pe[0,0:4])
-        #print("self.pe",self.pe[1,0:4])
-        x = x + self.pe[:x.size(0),:]
-        return x#self.dropout(x)
+        
+        show = False
+
+        x = x * math.sqrt(self.d_model)
+        if show:
+            print('**'*20)
+            print('**'*20)
+            print('x.shape',x.shape)
+            print("x",x[0,:4])
+            print('self.pe.shape',self.pe.shape)
+            print("self.pe",self.pe[:x.size(0),:][0,:8])
+            print("self.pe",self.pe[:x.size(0),:][1,:8])
+            print("self.pe",self.pe[:x.size(0),:][2,:8])
+            print("self.pe",self.pe[:x.size(0),:][3,:8])
+            print("self.pe",self.pe[:x.size(0),:][-1,:8])
+        x = x + torch.autograd.Variable(self.pe[:x.size(0),:], requires_grad=False)
+        if show:
+            print("x",x[0,:4])
+        x = self.dropout(x)
+        if show:
+            print("x",x[0,:4])
+            print('**'*20)
+            print('**'*20)
+        return x
     
 class SPOTER5(nn.Module):
     """
@@ -439,18 +465,22 @@ class SPOTER5(nn.Module):
 
         self.positional_encoder = PositionalEncoding(hidden_dim)
         self.positional_decoder = PositionalEncoding(hidden_dim)
+        
+        #self.ff_softmax = nn.Softmax(dim=1) # esto no se hace cuando se usa crossentropy loss
+        self.cnt = 0
 
-                     
     def forward(self, inputs,show=False):
-        show=False
+        show= True if self.cnt==0 else False
+        self.cnt+=1
         print("") if show else None
-        inputs = inputs+0.5
+        #inputs = inputs+0.5
         print("inputs.shape",inputs.shape) if show else None #inputs.shape torch.Size([28, 54, 2])
         #h = torch.unsqueeze(inputs.flatten(start_dim=1), 1).float()
         h = inputs.flatten(start_dim=1).float()
 
         print("h.shape",h.shape) if show else None#h.shape torch.Size([28, 1, 108])
 
+        generation = None
 
         src        = h[:-2,:] if h.shape[0]>2 else h[:-1,:]
         tgt        = h[-2,:].unsqueeze(0) if h.shape[0]>2 else h[-1,:].unsqueeze(0)
@@ -469,22 +499,24 @@ class SPOTER5(nn.Module):
         memory = self.encoder(self.positional_encoder(src))
         print("memory.shape",memory.shape)  if show else None# torch.Size([14, 108])
         print("memory:",memory[0,:4].tolist())  if show else None#[0.057049673050642014, -2.7947468757629395, -2.5759713649749756, -1.494513988494873]
-        generation = self.decoder_gen(tgt, memory) #encoder decoder generation: [0.19776038825511932, -3.6382975578308105, 1.1325629949569702, -0.1620892882347107]
+        #generation = self.decoder_gen(tgt, memory) #encoder decoder generation: [0.19776038825511932, -3.6382975578308105, 1.1325629949569702, -0.1620892882347107]
         embedding  = self.decoder_class(self.class_query, memory) #encoder decoder generation: [0.19776038825511932, -3.6382975578308105, 1.1325629949569702, -0.1620892882347107]
-        generation = torch.sigmoid(generation)
-        print("generation.shape",generation.shape)  if show else None# torch.Size([1, 108])
-        print("generation:",generation[0,:4].tolist())  if show else None#transformer generation: [[0.19776038825511932, -3.6382975578308105, 1.1325629949569702, -0.1620892882347107]]
+        #generation = torch.sigmoid(generation)
+        if generation is not None:
+            print("generation.shape",generation.shape)  if show else None# torch.Size([1, 108])
+            print("generation:",generation[0,:4].tolist())  if show else None#transformer generation: [[0.19776038825511932, -3.6382975578308105, 1.1325629949569702, -0.1620892882347107]]
         # we prove that is equal implementation
         #embedding = torch.mean(memory,0)#.unsqueeze(0)
         print("embedding.shape",embedding.shape)  if show else None# torch.Size([1,108])
-        h = self.linear_class_1(embedding)
+        #h = self.linear_class_1(embedding)
+        h = embedding
         h = self.act_relu(h)
         h = self.dropout1(h)
-        res = self.linear_class_2(h)            
+        res = self.linear_class(h)
         print("res.shape",res.shape)  if show else None# torch.Size([1, 38])
 
-        tgt_future = tgt_future-0.5
-        generation= generation-0.5
+        #tgt_future = tgt_future-0.5
+        #generation= generation-0.5
         #raise
         return res,tgt_future,generation
 
@@ -499,7 +531,7 @@ if __name__ == "__main__":
 #min inputs: -0.2039239356527105
 #std inputs: 0.11107357715482585
 
-#python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=1 --dim_feedforward_decoder=1024 --dim_feedforward_encoder=256 --early_stopping_patience=1000 --epochs=101  --model_name=generative_class_residual --num_heads=2 --num_layers_1=3 --num_layers_2=2 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="f5-s95-p100v100-test-spoter5-pruebis" --draw_points=0 --use_wandb=1 --resume=1
+#python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=1 --dim_feedforward_decoder=2048 --dim_feedforward_encoder=256 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual --num_heads=2 --num_layers_1=3 --num_layers_2=2 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="v4gen test-onlyClassPos" --draw_points=0 --use_wandb=1 --resume=1
 
 """
 h.shape torch.Size([15, 1, 108])
@@ -516,5 +548,21 @@ generation.shape torch.Size([1, 1, 108])
 generation: [[0.26965904235839844, 0.5806722044944763, 0.2910144627094269, 0.8225837349891663]]
 embedding.shape torch.Size([1, 108])
 res.shape torch.Size([1, 38])
+
+
+inputs.shape torch.Size([15, 54, 2])
+h.shape torch.Size([15, 108])
+
+src.shape torch.Size([13, 108])
+tgt.shape torch.Size([1, 108])
+self.positional_encoder(src).shape: torch.Size([13, 108])
+self.positional_encoder(src): tensor([0.5020, 0.3591, 0.5232, 0.3152], device='cuda:0') tensor([0.5020, 1.3591, 0.5232, 1.3152], device='cuda:0')
+self.positional_encoder(src): tensor([0.5031, 0.3589, 0.5289, 0.3182], device='cuda:0') tensor([1.3445, 0.8992, 1.2756, 0.9833], device='cuda:0')
+self.positional_encoder(src): tensor([0.5034, 0.3598, 0.5296, 0.3182], device='cuda:0') tensor([ 1.4127, -0.0564,  1.5229,  0.2028], device='cuda:0')
+memory.shape torch.Size([13, 108])
+memory: [-2.5679965019226074, 3.177328586578369, 0.5847898125648499, -1.8924801349639893]
+embedding.shape torch.Size([1, 108])
+res.shape torch.Size([1, 38])
+
 """
 #datos

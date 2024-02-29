@@ -65,12 +65,17 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                         outputs = outputs.expand(1, -1, -1)
 
                         loss_classification = criterion[0](outputs[0], labels[0])
-                        loss_generation     = torch.sqrt(criterion[1](tgt,generation))
-                        loss_kdl            = criterion[2].compute_kld(tgt,generation)
-                        loss = loss_generation*args.loss_gen_gen_factor+loss_classification*args.loss_gen_class_factor+loss_kdl*args.loss_gen_kld_factor*beta
+
+                        if generation is None:
+                            loss = loss_classification
+                        else:
+                            loss_generation     = torch.sqrt(criterion[1](tgt,generation))
+                            loss_kdl            = criterion[2].compute_kld(tgt,generation)
+                            loss = loss_generation*args.loss_gen_gen_factor+loss_classification*args.loss_gen_class_factor+loss_kdl*args.loss_gen_kld_factor*beta
 
                         if i==0 and j<6:
-                            list_maps_generation.append([tgt,generation,videos_name])
+                            if generation is not None:
+                                list_maps_generation.append([tgt,generation,videos_name])
 
                     else:
                         outputs = model(inputs).expand(1, -1, -1)
@@ -98,9 +103,10 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                     grad_scaler.scale(loss).backward()
 
                 if args.model_name == "generative_class_residual":
-                    sum_loss_generation     += loss_generation.item()
-                    sum_loss_classification += loss_classification.item()
-                    sum_loss_kdl            += loss_kdl.item()
+                    if generation  is not None:
+                        sum_loss_generation     += loss_generation.item()
+                        sum_loss_classification += loss_classification.item()
+                        sum_loss_kdl            += loss_kdl.item()
 
                 running_loss += loss.item()
                 if batch_name!='':
@@ -135,6 +141,8 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                     optimizer.zero_grad(set_to_none=True)
 
                 label_predicted = int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2)))
+                #label_predicted = int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2)))
+                #label_predicted = int(torch.argmax(outputs))
 
                 labels_predicted.append(label_predicted)
                 labels_original.append(label_original)
@@ -238,9 +246,12 @@ def evaluate(model, dataloader, criterion, device,epoch=1,args=None,beta=1):
                         outputs = outputs.expand(1, -1, -1)
 
                     loss_classification = criterion[0](outputs[0], labels[0])
-                    loss_generation     = torch.sqrt(criterion[1](tgt,generation))
-                    loss_kdl            = criterion[2].compute_kld(tgt,generation)
-                    loss = loss_generation*args.loss_gen_gen_factor+loss_classification*args.loss_gen_class_factor+loss_kdl*args.loss_gen_kld_factor*beta
+                    if generation is None:
+                        loss = loss_classification
+                    else:
+                        loss_generation     = torch.sqrt(criterion[1](tgt,generation))
+                        loss_kdl            = criterion[2].compute_kld(tgt,generation)
+                        loss = loss_generation*args.loss_gen_gen_factor+loss_classification*args.loss_gen_class_factor+loss_kdl*args.loss_gen_kld_factor*beta
 
                     if i==0 and j<6:
                         list_maps_generation.append([tgt,generation,videos_name])
@@ -263,12 +274,14 @@ def evaluate(model, dataloader, criterion, device,epoch=1,args=None,beta=1):
                     continue  # Otra opción podría ser detener el bucle o el entrenamiento aquí
 
                 if args.model_name == "generative_class_residual":
-                    sum_loss_generation     += loss_generation.item()
-                    sum_loss_classification += loss_classification.item()
-                    sum_loss_kdl            += loss_kdl.item()
+                    if generation is not None:
+                        sum_loss_generation     += loss_generation.item()
+                        sum_loss_classification += loss_classification.item()
+                        sum_loss_kdl            += loss_kdl.item()
                 running_loss += loss.item()
 
                 label_predicted = int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2)))
+                #label_predicted = int(torch.argmax(outputs))
 
                 labels_predicted.append(label_predicted)
                 labels_original.append(label_original)
@@ -354,7 +367,8 @@ def evaluate_with_features(model, dataloader, cel_criterion, device, print_stats
         pred_all += 1
 
         # calculate the accuracy per instance
-        acc = 1 if int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2))) == int(labels[0][0]) else 0
+        #acc = 1 if int(torch.argmax(torch.nn.functional.softmax(outputs, dim=2))) == int(labels[0][0]) else 0
+        acc = 1 if int(torch.argmax(outputs)) == int(labels[0][0]) else 0
 
         # append the results to the list
         results.append({
