@@ -804,7 +804,7 @@ def train(args):
                     'current_weight_decay':current_weight_decay,
 
                     "wandb": save_artifact.WandBID(wandb.run.id).state_dict(),
-                    "wandb_step": step,#run.summary.get("_step"),
+                    "wandb_step": run.summary.get("_step"),
                     "epoch": save_artifact.Epoch(epoch).state_dict(),
                     "metric_val_acc": save_artifact.Metric(previous_val_acc).state_dict()
                 }, model_save_folder_path + "/checkpoint_model.pth")
@@ -844,7 +844,7 @@ def train(args):
                         'current_weight_decay':current_weight_decay,
 
                         "wandb": save_artifact.WandBID(wandb.run.id).state_dict(),
-                        "wandb_step":  step,#run.summary.get("_step"),
+                        "wandb_step":  run.summary.get("_step"),
                         "epoch": save_artifact.Epoch(epoch).state_dict(),
                         "metric_val_acc": save_artifact.Metric(top_val_acc).state_dict()
 
@@ -907,7 +907,7 @@ def train(args):
             'current_weight_decay':current_weight_decay,
 
             "wandb": save_artifact.WandBID(wandb.run.id).state_dict(),
-            "wandb_step": step,#run.summary.get("_step"),
+            "wandb_step": run.summary.get("_step"),
             "epoch": save_artifact.Epoch(epoch).state_dict(),
             "metric_val_acc": save_artifact.Metric(previous_val_acc).state_dict()
         }, model_save_folder_path + "/checkpoint_model.pth")
