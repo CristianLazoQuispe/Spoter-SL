@@ -768,14 +768,15 @@ def train(args):
         #print("epoch:",epoch)
         if args.model_name == "generative_class_residual":
             if epoch%100 == 0 or epoch ==1:
-                list_images_gen_train,filename_gen_train = drawer.get_image_generation(list_maps_generation_train,suffix='train',save_image=True,folder = model_save_folder_path + "/")
-                list_images_gen_val,filename_gen_val     = drawer.get_image_generation(list_maps_generation_val,suffix='val',save_image=True,folder = model_save_folder_path + "/")
-                print("filename_gen_train:",filename_gen_train)
-                print("filename_gen_val  :",filename_gen_val)
-                if args.use_wandb:
-                    print("sending image Generation")
-                    wandb.log({"train_gen_images": wandb.Image(filename_gen_train,caption="train generation images")},step=step)
-                    wandb.log({"val_gen_images": wandb.Image(filename_gen_val,caption="val generation images")},step=step)
+                if len(list_maps_generation_train)>0 and len(list_maps_generation_val)>0:
+                    list_images_gen_train,filename_gen_train = drawer.get_image_generation(list_maps_generation_train,suffix='train',save_image=True,folder = model_save_folder_path + "/")
+                    list_images_gen_val,filename_gen_val     = drawer.get_image_generation(list_maps_generation_val,suffix='val',save_image=True,folder = model_save_folder_path + "/")
+                    print("filename_gen_train:",filename_gen_train)
+                    print("filename_gen_val  :",filename_gen_val)
+                    if args.use_wandb:
+                        print("sending image Generation")
+                        wandb.log({"train_gen_images": wandb.Image(filename_gen_train,caption="train generation images")},step=step)
+                        wandb.log({"val_gen_images": wandb.Image(filename_gen_val,caption="val generation images")},step=step)
 
                 #time.sleep(0.001)
                 #os.remove(filename_gen_train)
@@ -803,7 +804,7 @@ def train(args):
                     'current_weight_decay':current_weight_decay,
 
                     "wandb": save_artifact.WandBID(wandb.run.id).state_dict(),
-                    "wandb_step": run.summary.get("_step"),
+                    "wandb_step": step,#run.summary.get("_step"),
                     "epoch": save_artifact.Epoch(epoch).state_dict(),
                     "metric_val_acc": save_artifact.Metric(previous_val_acc).state_dict()
                 }, model_save_folder_path + "/checkpoint_model.pth")
@@ -843,7 +844,7 @@ def train(args):
                         'current_weight_decay':current_weight_decay,
 
                         "wandb": save_artifact.WandBID(wandb.run.id).state_dict(),
-                        "wandb_step":  run.summary.get("_step"),
+                        "wandb_step":  step,#run.summary.get("_step"),
                         "epoch": save_artifact.Epoch(epoch).state_dict(),
                         "metric_val_acc": save_artifact.Metric(top_val_acc).state_dict()
 
@@ -890,6 +891,7 @@ def train(args):
 
         lr_progress.append(sgd_optimizer.param_groups[0]["lr"])
 
+    step -=1
 
     print("Saving last model ",model_save_folder_path + "/checkpoint_model.pth")
 
@@ -905,7 +907,7 @@ def train(args):
             'current_weight_decay':current_weight_decay,
 
             "wandb": save_artifact.WandBID(wandb.run.id).state_dict(),
-            "wandb_step": run.summary.get("_step"),
+            "wandb_step": step,#run.summary.get("_step"),
             "epoch": save_artifact.Epoch(epoch).state_dict(),
             "metric_val_acc": save_artifact.Metric(previous_val_acc).state_dict()
         }, model_save_folder_path + "/checkpoint_model.pth")
