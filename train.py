@@ -601,7 +601,7 @@ def train(args):
         step = run.summary.get("_step")
         if step is None:
             try : 
-                step = int(checkpoint["wandb_step"])
+                step = int(checkpoint["wandb_step"])-1
             except:
                 pass
     step = 0 if step is None else step+1
