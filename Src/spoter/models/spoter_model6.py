@@ -475,7 +475,9 @@ class SPOTER6(nn.Module):
             print("self.positional_encoder(src):",src[1,:4],self.positional_encoder(src)[1,:4]) if show else None
             print("self.positional_encoder(src):",src[2,:4],self.positional_encoder(src)[2,:4]) if show else None
 
-        memory = self.encoder(self.positional_encoder(src))
+        src += self.pos
+        #memory = self.encoder(self.positional_encoder(src))
+        memory = self.encoder(src)
         print("memory.shape",memory.shape)  if show else None# torch.Size([14, 108])
         print("memory:",memory[0,:4].tolist())  if show else None#[0.057049673050642014, -2.7947468757629395, -2.5759713649749756, -1.494513988494873]
         #generation = torch.sigmoid(self.decoder_gen(tgt, memory)) #encoder decoder generation: [0.19776038825511932, -3.6382975578308105, 1.1325629949569702, -0.1620892882347107]
@@ -502,7 +504,7 @@ class SPOTER6(nn.Module):
 if __name__ == "__main__":
     pass
 
-##tmux a -t session_02  python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=1 --dim_feedforward_decoder=1024 --dim_feedforward_encoder=512 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual_piramidal --num_heads=3 --num_layers_1=3 --num_layers_2=3 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="Gen6Piramidalv1" --draw_points=0 --use_wandb=1 --resume=1
+##tmux a -t session_02  python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=0 --dim_feedforward_decoder=1024 --dim_feedforward_encoder=512 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual_piramidal --num_heads=3 --num_layers_1=3 --num_layers_2=3 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="Gen6Piramidalv1PosLearn" --draw_points=0 --use_wandb=1 --resume=1
 
 """
 h.shape torch.Size([15, 1, 108])
