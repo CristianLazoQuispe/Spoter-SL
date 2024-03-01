@@ -427,6 +427,7 @@ def train(args):
                         config=args, 
                         name=args.experiment_name, 
                         job_type="model-training",
+                        allow_val_change=True,
                         save_code=True,
                         #settings=wandb.Settings(start_method="fork"),
                         resume="must" if (args.resume and checkpoint is not None)  else None,
@@ -514,11 +515,12 @@ def train(args):
 
     if args.use_wandb:
         # Log the parameters to wandb
-        wandb.config.update({
-            "total_parameters": total_params,
-            "trainable_parameters": trainable_params,
-            "trainable_parameters_ratio": ratio
-        })
+        #wandb.config.update({
+        #    "total_parameters": total_params,
+        #    "trainable_parameters": trainable_params,
+        #    "trainable_parameters_ratio": ratio,
+        #    'allow_val_change':True,
+        #})
 
         config = wandb.config
         #wandb.watch_called = False
@@ -700,7 +702,16 @@ def train(args):
             previous_val_loss = val_loss
         if val_acc is not None:
             previous_val_acc = val_acc
+
+
         if val_loader:
+            
+            if val_acc > top_val_acc:
+                top_val_acc = val_acc
+
+            if val_f1_weighted > top_val_f1_weighted:
+                top_val_f1_weighted = val_f1_weighted
+
             current_weight_decay = sgd_optimizer.param_groups[0]['weight_decay']
             log_values = {
                 'current_lr':current_lr,
@@ -822,11 +833,7 @@ def train(args):
 
                 }, model_save_folder_path + "/checkpoint_model.pth")
 
-            if val_acc > top_val_acc:
-                top_val_acc = val_acc
 
-            if val_f1_weighted > top_val_f1_weighted:
-                top_val_f1_weighted = val_f1_weighted
 
                 print("Saving best model!")
                 print(model_save_folder_path)

@@ -92,6 +92,7 @@ class SPOTERTransformerEncoderLayer(nn.TransformerEncoderLayer):
         super(SPOTERTransformerEncoderLayer, self).__init__(d_model, nhead, dim_feedforward, dropout, activation)
 
         self.dropout_new = nn.Dropout(dropout)
+        self.norm3 = nn.LayerNorm(d_model, eps= 1e-5)
 
     def forward(self,
             data: Tuple[Tensor, Tensor],
@@ -100,7 +101,7 @@ class SPOTERTransformerEncoderLayer(nn.TransformerEncoderLayer):
             is_causal: bool = False) -> Tensor:
 
         x, res = data
-        x   = x + self.dropout_new(x)
+        x   = self.norm3(x + self.dropout_new(x))
         xr  = x 
         x   = self._sa_block(x, src_mask, src_key_padding_mask, is_causal=is_causal)
         res = res +x
@@ -125,6 +126,78 @@ class SPOTERTransformerEncoderLayer(nn.TransformerEncoderLayer):
     def _ff_block(self, x: Tensor) -> Tensor:
         x = self.linear2(self.dropout(self.activation(self.linear1(x))))
         return self.dropout2(x)
+
+
+
+class SPOTERTransformerDecoderLayer(nn.TransformerDecoderLayer):
+    """
+    Edited TransformerDecoderLayer implementation omitting the redundant self-attention operation as opposed to the
+    standard implementation.
+    """
+
+    def __init__(self, d_model, nhead, dim_feedforward, dropout, activation):
+        super(SPOTERTransformerDecoderLayer, self).__init__(d_model, nhead, dim_feedforward, dropout, activation)
+
+        #del self.self_attn
+        self.norm3 = nn.LayerNorm(d_model, eps= 1e-5)
+        self.dropout_new = nn.Dropout(dropout)
+
+    def forward(self, data: Tuple[Tensor, Tensor], memory: torch.Tensor, tgt_mask: Optional[torch.Tensor] = None,
+                memory_mask: Optional[torch.Tensor] = None, tgt_key_padding_mask: Optional[torch.Tensor] = None,
+                memory_key_padding_mask: Optional[torch.Tensor] = None,
+                tgt_is_causal: bool = False,
+                memory_is_causal: bool = False) -> torch.Tensor:
+
+        x, res = data
+
+        x   = x +self.dropout_new(x)
+        x   = self.norm1(x)
+
+        xr  = x
+        #print("x : ",x.shape) # es None ,"tgt_key_padding_mask:",tgt_key_padding_mask.shape
+        #print("original  :",x[0,0,:5].tolist())
+        
+        """
+        x   = self._sa_block(x, tgt_mask, tgt_key_padding_mask,tgt_is_causal)#x + self.dropout1(self.norm1(tgt))
+        #print("after _sa_block:",x[0,0,:5].tolist())
+        res = res +x
+        x   = self.norm1(x + xr)
+        xr  = x
+        """
+        x   = self._mha_block(x, memory, memory_mask, memory_key_padding_mask,memory_is_causal)
+        res = res +x
+        x   = self.norm2(x + xr)
+        xr  = x
+        x   = self._ff_block(x)
+        res = res + x
+        x   = self.norm3(x + xr)
+        return x, res
+    
+    # self-attention block
+    def _sa_block(self, x: Tensor,
+                  attn_mask: Optional[Tensor], key_padding_mask: Optional[Tensor], is_causal: bool = False) -> Tensor:
+        x = self.self_attn(x, x, x,
+                           attn_mask=attn_mask,
+                           key_padding_mask=key_padding_mask,
+                           is_causal=is_causal,
+                           need_weights=False)[0]
+        return self.dropout1(x)
+    # multihead attention block
+    def _mha_block(self, x: Tensor, mem: Tensor,
+                   attn_mask: Optional[Tensor], key_padding_mask: Optional[Tensor], is_causal: bool = False) -> Tensor:
+        
+        x = self.multihead_attn(x, mem, mem,
+                                attn_mask=attn_mask,
+                                key_padding_mask=key_padding_mask,
+                                is_causal=is_causal,
+                                need_weights=False)[0]
+        return self.dropout2(x)
+
+    # feed forward block
+    def _ff_block(self, x: Tensor) -> Tensor:
+        x = self.linear2(self.dropout(self.activation(self.linear1(x))))
+        return self.dropout3(x)
+
 
 
 class SPOTERTransformerEncoder(nn.TransformerEncoder):
@@ -192,10 +265,11 @@ class SPOTERTransformerEncoder(nn.TransformerEncoder):
 
         for mod in self.layers:
             output,res = mod((output,res), src_mask=mask, is_causal=is_causal, src_key_padding_mask=src_key_padding_mask_for_layers)
+       
+        output = output  + self.layer_norm(res)
+
         if self.norm is not None:
             output = self.norm(output)
-       
-        #output = output  + self.layer_norm(res)
 
         return output
 
@@ -227,120 +301,14 @@ class SPOTERTransformerDecoder(nn.TransformerDecoder):
                          tgt_is_causal=tgt_is_causal,
                          memory_is_causal=memory_is_causal)
 
+        output = output  + self.layer_norm(res)
+
         if self.norm is not None:
             output = self.norm(output)
 
-        #output = output  + self.layer_norm(res)
         return output
-
-class SPOTERTransformerDecoderLayer(nn.TransformerDecoderLayer):
-    """
-    Edited TransformerDecoderLayer implementation omitting the redundant self-attention operation as opposed to the
-    standard implementation.
-    """
-
-    def __init__(self, d_model, nhead, dim_feedforward, dropout, activation):
-        super(SPOTERTransformerDecoderLayer, self).__init__(d_model, nhead, dim_feedforward, dropout, activation)
-
-        #del self.self_attn
-        self.norm3 = nn.LayerNorm(d_model, eps= 1e-5)
-        self.dropout_new = nn.Dropout(dropout)
-
-    def forward(self, data: Tuple[Tensor, Tensor], memory: torch.Tensor, tgt_mask: Optional[torch.Tensor] = None,
-                memory_mask: Optional[torch.Tensor] = None, tgt_key_padding_mask: Optional[torch.Tensor] = None,
-                memory_key_padding_mask: Optional[torch.Tensor] = None,
-                tgt_is_causal: bool = False,
-                memory_is_causal: bool = False) -> torch.Tensor:
-
-        x, res = data
-
-        x   = x +self.dropout_new(x)
-
-        xr  = x
-        #print("x : ",x.shape) # es None ,"tgt_key_padding_mask:",tgt_key_padding_mask.shape
-        #print("original  :",x[0,0,:5].tolist())
-        
-        """
-        x   = self._sa_block(x, tgt_mask, tgt_key_padding_mask,tgt_is_causal)#x + self.dropout1(self.norm1(tgt))
-        #print("after _sa_block:",x[0,0,:5].tolist())
-        res = res +x
-        x   = self.norm1(x + xr)
-        xr  = x
-        """
-        x   = self._mha_block(x, memory, memory_mask, memory_key_padding_mask,memory_is_causal)
-        res = res +x
-        x   = self.norm2(x + xr)
-        xr  = x
-        x   = self._ff_block(x)
-        res = res + x
-        x   = self.norm3(x + xr)
-
-        return x, res
-    # self-attention block
-    def _sa_block(self, x: Tensor,
-                  attn_mask: Optional[Tensor], key_padding_mask: Optional[Tensor], is_causal: bool = False) -> Tensor:
-        x = self.self_attn(x, x, x,
-                           attn_mask=attn_mask,
-                           key_padding_mask=key_padding_mask,
-                           is_causal=is_causal,
-                           need_weights=False)[0]
-        return self.dropout1(x)
-    # multihead attention block
-    def _mha_block(self, x: Tensor, mem: Tensor,
-                   attn_mask: Optional[Tensor], key_padding_mask: Optional[Tensor], is_causal: bool = False) -> Tensor:
-        
-        x = self.multihead_attn(x, mem, mem,
-                                attn_mask=attn_mask,
-                                key_padding_mask=key_padding_mask,
-                                is_causal=is_causal,
-                                need_weights=False)[0]
-        return self.dropout2(x)
-
-    # feed forward block
-    def _ff_block(self, x: Tensor) -> Tensor:
-        x = self.linear2(self.dropout(self.activation(self.linear1(x))))
-        return self.dropout3(x)
-
+    
 import math
-
-class PositionalEmbedding_old(nn.Module):
-    def __init__(self,max_seq_len,embed_model_dim):
-        """
-        Args:
-            seq_len: length of input sequence
-            embed_model_dim: demension of embedding
-        """
-        super(PositionalEmbedding_old, self).__init__()
-        self.embed_dim = embed_model_dim
-
-        pe = torch.zeros(max_seq_len,self.embed_dim)
-        for pos in range(max_seq_len):
-            for i in range(0,self.embed_dim,2):
-                pe[pos, i]     = math.sin(pos / (10000 ** ((2 * i)/self.embed_dim)))
-                pe[pos, i + 1] = math.cos(pos / (10000 ** ((2 * (i + 1))/self.embed_dim)))
-        #pe = pe.unsqueeze(0)
-        self.register_buffer('pe', pe)
-
-
-    def forward(self, x):
-        """
-        Args:
-            x: input vector
-        Returns:
-            x: output
-        """      
-        #add constant to embedding
-        seq_len = x.size(0)
-        #seq_len = x.size(1)
-        
-        #print("x.shape",x.shape)
-        #print("pe.shape:",self.pe.shape)
-        x = x + torch.autograd.Variable(self.pe[:seq_len,:], requires_grad=False)
-        #x = x + torch.autograd.Variable(self.pe[:,:seq_len], requires_grad=False)
-        return x
-
-from torch.autograd import Variable
-
 
 
 class PositionalEncoding(nn.Module):
@@ -352,16 +320,15 @@ class PositionalEncoding(nn.Module):
 
         position = torch.arange(max_len).unsqueeze(1)
         div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000) / d_model))
-       # div_term = torch.exp(torch.arange(0, d_model, 2) * -(math.log(n) / d_model))
 
-        pe = torch.zeros(max_len, d_model)
+        pe = torch.zeros(max_len, 1, d_model)
+        #pe = torch.zeros(max_len, d_model)
         print("position.shape:",position.shape)
-        pe[:,0::2] = torch.sin(position * div_term)#[0::2,:]
-        pe[:,1::2] = torch.cos(position * div_term)#[1::2,:]
+        pe[:,0,0::2] = torch.sin(position * div_term)
+        pe[:,0,1::2] = torch.cos(position * div_term)
+        #pe[:,0::2] = torch.sin(position * div_term)
+        #pe[:,1::2] = torch.cos(position * div_term)
         self.register_buffer('pe', pe)
-
-        
-        #self.pe = torch.autograd.Variable(self.pe, requires_grad=False)
 
     def forward(self, x: Tensor) -> Tensor:
         """
@@ -407,7 +374,8 @@ class SPOTER5(nn.Module):
 
         self.hidden_dim  = hidden_dim
         self.pos         = nn.Parameter(torch.rand(1,1, hidden_dim))
-        self.class_query = nn.Parameter(torch.rand(1, hidden_dim))
+        self.class_query = nn.Parameter(torch.rand(1,1,hidden_dim))
+        #self.class_query = nn.Parameter(torch.rand(1,hidden_dim))
         #https://pytorch.org/docs/stable/generated/torch.nn.Transformer.html
         
         #self.transformer  = nn.Transformer(d_model=hidden_dim, nhead =num_heads,
@@ -448,6 +416,8 @@ class SPOTER5(nn.Module):
             num_layers=num_layers_2,
             norm = self.layer_norm_decoder
         )
+        self.decoder_gen.requires_grad_(False)
+
         self.decoder_class = SPOTERTransformerDecoder(
             d_model=hidden_dim,
             decoder_layer = SPOTERTransformerDecoderLayer(
@@ -476,8 +446,9 @@ class SPOTER5(nn.Module):
         print("") if show else None
         #inputs = inputs+0.5
         print("inputs.shape",inputs.shape) if show else None #inputs.shape torch.Size([28, 54, 2])
-        #h = torch.unsqueeze(inputs.flatten(start_dim=1), 1).float()
-        h = inputs.flatten(start_dim=1).float()
+        
+        h = torch.unsqueeze(inputs.flatten(start_dim=1), 1).float()
+        #h = inputs.flatten(start_dim=1).float()
 
         print("h.shape",h.shape) if show else None#h.shape torch.Size([28, 1, 108])
 
@@ -500,9 +471,8 @@ class SPOTER5(nn.Module):
         memory = self.encoder(self.positional_encoder(src))
         print("memory.shape",memory.shape)  if show else None# torch.Size([14, 108])
         print("memory:",memory[0,:4].tolist())  if show else None#[0.057049673050642014, -2.7947468757629395, -2.5759713649749756, -1.494513988494873]
-        #generation = self.decoder_gen(tgt, memory) #encoder decoder generation: [0.19776038825511932, -3.6382975578308105, 1.1325629949569702, -0.1620892882347107]
+        #generation = torch.sigmoid(self.decoder_gen(tgt, memory)) #encoder decoder generation: [0.19776038825511932, -3.6382975578308105, 1.1325629949569702, -0.1620892882347107]
         embedding  = self.decoder_class(self.class_query, memory) #encoder decoder generation: [0.19776038825511932, -3.6382975578308105, 1.1325629949569702, -0.1620892882347107]
-        #generation = torch.sigmoid(generation)
         if generation is not None:
             print("generation.shape",generation.shape)  if show else None# torch.Size([1, 108])
             print("generation:",generation[0,:4].tolist())  if show else None#transformer generation: [[0.19776038825511932, -3.6382975578308105, 1.1325629949569702, -0.1620892882347107]]
@@ -519,7 +489,7 @@ class SPOTER5(nn.Module):
         #tgt_future = tgt_future-0.5
         #generation= generation-0.5
         #raise
-        return res,tgt_future,generation
+        return res,tgt_future,torch.sigmoid(embedding)#generation
 
 
 if __name__ == "__main__":
@@ -534,7 +504,14 @@ if __name__ == "__main__":
 
 #python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=1 --dim_feedforward_decoder=2048 --dim_feedforward_encoder=256 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual --num_heads=2 --num_layers_1=3 --num_layers_2=2 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="v4gen test-onlyClassPos" --draw_points=0 --use_wandb=1 --resume=1
 
-#python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=1 --dim_feedforward_decoder=2048 --dim_feedforward_encoder=256 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual --num_heads=2 --num_layers_1=3 --num_layers_2=2 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="v4gen test-onlyClassPosNoRES" --draw_points=0 --use_wandb=1 --resume=1
+#python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=1 --dim_feedforward_decoder=2048 --dim_feedforward_encoder=256 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual --num_heads=2 --num_layers_1=3 --num_layers_2=2 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="v4gen test-onlyClassPosSiRES1Shape" --draw_points=0 --use_wandb=0 --resume=1
+
+#python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=1 --dim_feedforward_decoder=2048 --dim_feedforward_encoder=256 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual --num_heads=9 --num_layers_1=1 --num_layers_2=1 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="v4gen test-onlyClassPosSiRES1Shape911" --draw_points=0 --use_wandb=1 --resume=1
+
+#python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=2 --dim_feedforward_decoder=2048 --dim_feedforward_encoder=256 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual --num_heads=2 --num_layers_1=3 --num_layers_2=2 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="v4gen test-onlyClassPosSiRES1Shape" --draw_points=0 --use_wandb=1 --resume=1
+
+
+#python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=2 --dim_feedforward_decoder=2048 --dim_feedforward_encoder=256 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual --num_heads=2 --num_layers_1=3 --num_layers_2=2 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="v4gen test-onlyClassPosSiRES1Shape" --draw_points=0 --use_wandb=1 --resume=1
 
 """
 h.shape torch.Size([15, 1, 108])

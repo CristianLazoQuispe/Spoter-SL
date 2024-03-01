@@ -50,7 +50,6 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                 list_label_name_original = videos_name_total
 
             #for j, (inputs, labels,videos_name) in enumerate(zip(inputs_total,labels_total,videos_name_total)):
-
             for j in range(len(inputs_total)):
                 inputs = inputs_total[j]
                 labels = labels_total[j]
@@ -63,7 +62,10 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
 
                         outputs,tgt,generation = model(inputs)
                         outputs = outputs.expand(1, -1, -1)
-
+                        if j == 0 and epoch <2:
+                            print("outputs.shape:",outputs.shape)
+                            print("outputs[0]:",outputs[0])
+                            print("labels[0]:",labels[0])
                         loss_classification = criterion[0](outputs[0], labels[0])
 
                         if generation is None:
@@ -71,7 +73,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                         else:
                             loss_generation     = torch.sqrt(criterion[1](tgt,generation))
                             loss_kdl            = criterion[2].compute_kld(tgt,generation)
-                            loss = loss_generation*args.loss_gen_gen_factor+loss_classification*args.loss_gen_class_factor+loss_kdl*args.loss_gen_kld_factor*beta
+                            loss = loss_classification#loss_generation*args.loss_gen_gen_factor+loss_classification*args.loss_gen_class_factor+loss_kdl*args.loss_gen_kld_factor*beta
 
                         if i==0 and j<6:
                             if generation is not None:
@@ -244,6 +246,10 @@ def evaluate(model, dataloader, criterion, device,epoch=1,args=None,beta=1):
                     with torch.no_grad():
                         outputs,tgt,generation = model(inputs)
                         outputs = outputs.expand(1, -1, -1)
+                        if j == 0 and epoch <2:
+                            print("outputs.shape:",outputs.shape)
+                            print("outputs[0]:",outputs[0])
+                            print("labels[0]:",labels[0])
 
                     loss_classification = criterion[0](outputs[0], labels[0])
                     if generation is None:
@@ -251,7 +257,7 @@ def evaluate(model, dataloader, criterion, device,epoch=1,args=None,beta=1):
                     else:
                         loss_generation     = torch.sqrt(criterion[1](tgt,generation))
                         loss_kdl            = criterion[2].compute_kld(tgt,generation)
-                        loss = loss_generation*args.loss_gen_gen_factor+loss_classification*args.loss_gen_class_factor+loss_kdl*args.loss_gen_kld_factor*beta
+                        loss = loss_classification#loss_generation*args.loss_gen_gen_factor+loss_classification*args.loss_gen_class_factor+loss_kdl*args.loss_gen_kld_factor*beta
 
                     if i==0 and j<6:
                         list_maps_generation.append([tgt,generation,videos_name])
@@ -313,6 +319,14 @@ def evaluate(model, dataloader, criterion, device,epoch=1,args=None,beta=1):
 
     return val_loss, (pred_top_5 / pred_all), stats,labels_original,labels_predicted,list_depth_map_original,list_label_name_original,sum_loss_generation,sum_loss_classification,sum_loss_kdl,list_maps_generation
 
+
+#outputs[0]: tensor([[-0.1692, -0.0490, -0.4331,  0.1553, -0.1263, -0.3765,  0.0345,  0.7646,
+#          0.0484, -0.2443,  0.2874, -0.4431, -0.3477, -0.2067,  0.2181, -0.0439,
+#         -0.0545, -0.0685, -0.6860,  0.3127, -0.1203, -0.1776, -0.1315,  0.3528,
+#         -0.1803, -0.8359,  0.1505,  0.3430, -0.0074, -0.2778, -0.4028,  0.1633,
+#          0.2554,  0.5024, -0.2000,  0.3018,  0.0690,  0.4189]],
+#       device='cuda:0', dtype=torch.float16, grad_fn=<SelectBackward0>)
+#labels[0]: tensor([14], device='cuda:0')
 
 def evaluate_top_k(model, dataloader, device, k=5):
 
