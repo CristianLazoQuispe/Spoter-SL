@@ -406,7 +406,7 @@ class SPOTER6(nn.Module):
                 for i in range(num_layers_1)
                 ],
             num_layers=num_layers_1,
-            norm = self.layer_norm_encoder
+            norm = None#self.layer_norm_encoder
         )
         self.layer_norm_decoder = nn.LayerNorm(hidden_dim, eps= 1e-5)
 
@@ -421,7 +421,7 @@ class SPOTER6(nn.Module):
                 for i in range(num_layers_2)
                 ],
             num_layers=num_layers_2,
-            norm = self.layer_norm_decoder
+            norm = None#self.layer_norm_decoder
         )
         self.decoder_class = SPOTERTransformerDecoder(
             d_model=hidden_dim,
@@ -434,7 +434,7 @@ class SPOTER6(nn.Module):
                 for i in range(num_layers_2)
                 ],
             num_layers=num_layers_2,
-            norm = self.layer_norm_decoder
+            norm = None#self.layer_norm_decoder
         )
         self.linear_class_1 = nn.Linear(hidden_dim, 64) # 64 to avoid overfitting because hidden_dim is 108
         self.linear_class_2 = nn.Linear(64,num_classes)
@@ -504,7 +504,7 @@ class SPOTER6(nn.Module):
 if __name__ == "__main__":
     pass
 
-##tmux a -t session_02  python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=0 --dim_feedforward_decoder=1024 --dim_feedforward_encoder=512 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual_piramidal --num_heads=3 --num_layers_1=3 --num_layers_2=3 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="Gen6Piramidalv1PosLearn" --draw_points=0 --use_wandb=1 --resume=1
+##tmux a -t session_02  python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=3 --dim_feedforward_decoder=1024 --dim_feedforward_encoder=512 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual_piramidal --num_heads=3 --num_layers_1=3 --num_layers_2=3 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="Gen6Piramidalv1PosLearnNoLastNorm" --draw_points=0 --use_wandb=1 --resume=1
 
 """
 h.shape torch.Size([15, 1, 108])
