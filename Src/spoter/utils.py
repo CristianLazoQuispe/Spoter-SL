@@ -58,7 +58,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                 labels = labels.unsqueeze(0)
 
                 with torch.autocast(device_type="cuda",enabled=True):
-                    if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae"]:
+                    if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae","generative_class_residual_aeRD"]:
 
                         outputs,tgt,generation = model(inputs)
                         outputs = outputs.expand(1, -1, -1)
@@ -104,7 +104,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
                 if batch_name =='mean_2':
                     grad_scaler.scale(loss).backward()
 
-                if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae"]:
+                if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae","generative_class_residual_aeRD"]:
                     if generation  is not None:
                         sum_loss_generation     += loss_generation.item()
                         sum_loss_classification += loss_classification.item()
@@ -161,7 +161,7 @@ def train_epoch(model, dataloader, criterion, optimizer, device,clip_grad_max_no
 
                 #tqdm.tqdm.write(f"ID:{i+1} IDaug:{j+1} | Loss: {running_loss/pred_all} Acc: {pred_correct / pred_all}")
                 #tepoch.set_postfix(id_aug=j+1,m_loss=running_loss/pred_all,m_acc=pred_correct / pred_all)
-                if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae"]:
+                if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae","generative_class_residual_aeRD"]:
                     tepoch.set_postfix(id_aug=j+1,loss=running_loss/pred_all,acc=pred_correct / pred_all,
                                        loss_gen=sum_loss_generation/pred_all,loss_acc=sum_loss_classification/pred_all,
                                        loss_kdl=sum_loss_kdl/pred_all)
@@ -242,7 +242,7 @@ def evaluate(model, dataloader, criterion, device,epoch=1,args=None,beta=1):
 
                 labels = labels.unsqueeze(0)                
 
-                if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae"]:
+                if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae","generative_class_residual_aeRD"]:
                     with torch.no_grad():
                         outputs,tgt,generation = model(inputs)
                         outputs = outputs.expand(1, -1, -1)
@@ -279,7 +279,7 @@ def evaluate(model, dataloader, criterion, device,epoch=1,args=None,beta=1):
                     labels_original.append(label_original)
                     continue  # Otra opción podría ser detener el bucle o el entrenamiento aquí
 
-                if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae"]:
+                if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae","generative_class_residual_aeRD"]:
                     if generation is not None:
                         sum_loss_generation     += loss_generation.item()
                         sum_loss_classification += loss_classification.item()
@@ -303,7 +303,7 @@ def evaluate(model, dataloader, criterion, device,epoch=1,args=None,beta=1):
                 stats[label_original][1] += 1
                 pred_all += 1
                 #tqdm.tqdm.write(f"ID:{i+1} IDaug:{j+1} | Loss: {running_loss/pred_all} Acc: {pred_correct / pred_all}")
-                if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae"]:
+                if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae","generative_class_residual_aeRD"]:
                     tepoch.set_postfix(id_aug=j+1,loss=running_loss/pred_all,acc=pred_correct / pred_all,
                                        loss_gen=sum_loss_generation/pred_all,loss_acc=sum_loss_classification/pred_all,
                                        loss_kdl=sum_loss_kdl/pred_all)

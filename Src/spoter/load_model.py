@@ -6,7 +6,7 @@ from .models.spoter_model4 import SPOTER4
 from .models.spoter_model5 import SPOTER5
 from .models.spoter_model6 import SPOTER6
 from .models.spoter_model7 import SPOTER7
-
+from .models.spoter_model8 import SPOTER8
 
 def get_slrt_model(args):
 
@@ -205,6 +205,24 @@ def get_slrt_model(args):
         args.freeze_decoder_layers = None
         args.has_mlp = None
         args.script_run_model = f""" SPOTER7(num_classes={args.num_classes},
+                            hidden_dim={args.hidden_dim}, num_heads={args.num_heads}, 
+                            num_layers_1={args.num_layers_1}, num_layers_2={args.num_layers_2}, 
+                            dim_feedforward_encoder={args.dim_feedforward_encoder},
+                            dim_feedforward_decoder={args.dim_feedforward_decoder},dropout={args.dropout})"""
+
+
+    elif args.model_name == "generative_class_residual_aeRD":
+        print("USING SPOTER  New Model Generative+Classification with ResiDual Connections Autoencoder RD")
+        slrt_model = SPOTER8(num_classes=args.num_classes,
+                            hidden_dim=args.hidden_dim, num_heads=args.num_heads, 
+                            num_layers_1=args.num_layers_1, num_layers_2=args.num_layers_2, 
+                            dim_feedforward_encoder=args.dim_feedforward_encoder,
+                            dim_feedforward_decoder=args.dim_feedforward_decoder,dropout=args.dropout
+                            )
+        args.norm_first = None
+        args.freeze_decoder_layers = None
+        args.has_mlp = None
+        args.script_run_model = f""" SPOTER8(num_classes={args.num_classes},
                             hidden_dim={args.hidden_dim}, num_heads={args.num_heads}, 
                             num_layers_1={args.num_layers_1}, num_layers_2={args.num_layers_2}, 
                             dim_feedforward_encoder={args.dim_feedforward_encoder},

@@ -303,7 +303,9 @@ def train(args):
                 v = 20000
             if k == "device":
                 v = 0
-            if k!="resume":
+            if k in ["resume","use_wandb"]:
+                pass
+            else:
                 key_parts.append(f"{k}_{v}")
 
         key = "".join(key_parts) 
@@ -571,20 +573,20 @@ def train(args):
         class_weight = torch.FloatTensor(factors).to(device)
         print("\\\\\\"*20)
         print("class_weight:",class_weight)
-        if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae"]:
+        if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae","generative_class_residual_aeRD"]:
             cel_criterion = [None,None,None]
             cel_criterion[0] = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing, weight=class_weight)
 
         else:
             cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing, weight=class_weight)
     else:
-        if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae"]:
+        if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae","generative_class_residual_aeRD"]:
             cel_criterion = [None,None,None]
             cel_criterion[0] = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)#, weight=class_weight)
         else:
             cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)#, weight=class_weight)
     #cel_criterion = nn.CrossEntropyLoss()
-    if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae"]:
+    if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae","generative_class_residual_aeRD"]:
         cel_criterion[1] = nn.MSELoss()
         cel_criterion[2] = KLDivergence()
 
@@ -727,7 +729,7 @@ def train(args):
                 'total_time':total_time
             }
 
-            if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae"]:
+            if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae","generative_class_residual_aeRD"]:
                 log_values['train_loss_gen'] = sum_loss_generation_train
                 log_values['train_loss_acc'] = sum_loss_classification_train
 
@@ -776,7 +778,7 @@ def train(args):
                         wandb.log({"gloss_val_video": wandb.Video(filename_val, format="gif")}, step=step)
                         #wandb.log({"val_video": wandb.Video(filename_val, fps=1,format="mp4")})
         #print("epoch:",epoch)
-        if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae"]:
+        if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae","generative_class_residual_aeRD"]:
             if epoch%100 == 0 or epoch ==1:
                 if len(list_maps_generation_train)>0 and len(list_maps_generation_val)>0:
                     list_images_gen_train,filename_gen_train = drawer.get_image_generation(list_maps_generation_train,suffix='train',save_image=True,folder = model_save_folder_path + "/")

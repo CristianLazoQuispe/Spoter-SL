@@ -102,17 +102,18 @@ class SPOTERTransformerEncoderLayer(nn.TransformerEncoderLayer):
             src_mask: Optional[Tensor] = None,
             src_key_padding_mask: Optional[Tensor] = None,
             is_causal: bool = False) -> Tensor:
-
+        #print("ENCODER START")
         x, res = data
         x   = self.norm3(x + self.dropout_new(x))
         xr  = x 
         x   = self._sa_block(x, src_mask, src_key_padding_mask, is_causal=is_causal)
-        res = res +x
+        #res = res +x
         x   = self.norm1(x + xr)
         xr  = x
         x   = self._ff_block(x)
-        res = res + x
-        x   = self.norm2(x + xr)
+        #res = res + x
+        x   = x#self.norm2(xr)#x + xr)
+        #print("ENCODER END")
 
         return x, res
 
@@ -127,8 +128,8 @@ class SPOTERTransformerEncoderLayer(nn.TransformerEncoderLayer):
 
     # feed forward block
     def _ff_block(self, x: Tensor) -> Tensor:
-        x = self.linear2(self.dropout(self.activation(self.linear1(x))))
-        return self.dropout2(x)
+        x =self.dropout(self.activation(self.linear1(x)))
+        return x
 
 
 
@@ -150,11 +151,12 @@ class SPOTERTransformerDecoderLayer(nn.TransformerDecoderLayer):
                 memory_key_padding_mask: Optional[torch.Tensor] = None,
                 tgt_is_causal: bool = False,
                 memory_is_causal: bool = False) -> torch.Tensor:
-
+        #print("")
+        #print("DECODER START")
         x, res = data
 
         x   = x +self.dropout_new(x)
-        x   = self.norm1(x)
+        x   = self.norm3(x)
 
         xr  = x
         #print("x : ",x.shape) # es None ,"tgt_key_padding_mask:",tgt_key_padding_mask.shape
@@ -167,13 +169,17 @@ class SPOTERTransformerDecoderLayer(nn.TransformerDecoderLayer):
         x   = self.norm1(x + xr)
         xr  = x
         """
+        #print("x.shape:",x.shape)
+        #print("memory.shape:",memory.shape)
         x   = self._mha_block(x, memory, memory_mask, memory_key_padding_mask,memory_is_causal)
-        res = res +x
+        #res = res +x
         x   = self.norm2(x + xr)
         xr  = x
         x   = self._ff_block(x)
-        res = res + x
-        x   = self.norm3(x + xr)
+        #res = res + x
+        x   = x#self.norm3(xr)#x + xr)
+        #print("x.shape:",x.shape)
+        #print("DECODER END")
         return x, res
     
     # self-attention block
@@ -198,8 +204,8 @@ class SPOTERTransformerDecoderLayer(nn.TransformerDecoderLayer):
 
     # feed forward block
     def _ff_block(self, x: Tensor) -> Tensor:
-        x = self.linear2(self.dropout(self.activation(self.linear1(x))))
-        return self.dropout3(x)
+        x = self.dropout(self.activation(self.linear1(x)))
+        return x
 
 
 
@@ -266,15 +272,16 @@ class SPOTERTransformerEncoder(nn.TransformerEncoder):
 
         res = src
 
+        memories = []
         for mod in self.layers:
             output,res = mod((output,res), src_mask=mask, is_causal=is_causal, src_key_padding_mask=src_key_padding_mask_for_layers)
-       
-        output = output  + self.layer_norm(res)
+            memories.append(output)
+        #output = output  + self.layer_norm(res)
 
         if self.norm is not None:
             output = self.norm(output)
 
-        return output
+        return memories
 
 class SPOTERTransformerDecoder(nn.TransformerDecoder):
     def __init__(self, d_model,decoder_layer, num_layers, norm=None):
@@ -285,7 +292,7 @@ class SPOTERTransformerDecoder(nn.TransformerDecoder):
         self.layers = _get_clones(decoder_layer, num_layers,is_list=True)
         self.norm  = norm
 
-    def forward(self, tgt: Tensor, memory: Tensor, tgt_mask: Optional[Tensor] = None,
+    def forward(self, tgt: Tensor, memories: list, tgt_mask: Optional[Tensor] = None,
                 memory_mask: Optional[Tensor] = None, tgt_key_padding_mask: Optional[Tensor] = None,
                 memory_key_padding_mask: Optional[Tensor] = None, tgt_is_causal: Optional[bool] = None,
                 memory_is_causal: bool = False) -> Tensor:
@@ -296,7 +303,8 @@ class SPOTERTransformerDecoder(nn.TransformerDecoder):
         seq_len = _get_seq_len(tgt, self.layers[0].self_attn.batch_first)
         tgt_is_causal = _detect_is_causal_mask(tgt_mask, tgt_is_causal, seq_len)
 
-        for mod in self.layers:
+        for idx,mod in enumerate(self.layers):
+            memory = memories[len(memories)-idx-1]
             output,res = mod((output,res), memory, tgt_mask=tgt_mask,
                          memory_mask=memory_mask,
                          tgt_key_padding_mask=tgt_key_padding_mask,
@@ -304,7 +312,7 @@ class SPOTERTransformerDecoder(nn.TransformerDecoder):
                          tgt_is_causal=tgt_is_causal,
                          memory_is_causal=memory_is_causal)
 
-        output = output  + self.layer_norm(res)
+        #output = output  + self.layer_norm(res)
 
         if self.norm is not None:
             output = self.norm(output)
@@ -364,7 +372,7 @@ class PositionalEncoding(nn.Module):
             print('**'*20)
         return x
     
-class SPOTER6(nn.Module):
+class SPOTER8(nn.Module):
     """
     Implementation of the SPOTER (Sign POse-based TransformER) architecture for sign language recognition from sequence
     of skeletal data.
@@ -373,11 +381,11 @@ class SPOTER6(nn.Module):
     def __init__(self, num_classes,hidden_dim=108, num_heads=3, num_layers_1=3, num_layers_2=3, 
                             dim_feedforward_encoder=1024,
                             dim_feedforward_decoder=2048,dropout=0.3):
-        super(SPOTER6,self).__init__()
+        super(SPOTER8,self).__init__()
 
         self.hidden_dim  = hidden_dim
         self.pos         = nn.Parameter(torch.rand(1,1, hidden_dim))
-        self.class_query = nn.Parameter(torch.rand(1,1,hidden_dim))
+        self.class_query = nn.Parameter(torch.rand(1,1,dim_feedforward_encoder//4))
         #self.class_query = nn.Parameter(torch.rand(1,hidden_dim))
         #https://pytorch.org/docs/stable/generated/torch.nn.Transformer.html
         
@@ -387,7 +395,6 @@ class SPOTER6(nn.Module):
         #dim_feedforward = dim_feedforward_encoder,
         #dropout=dropout) # norm_first is not necessary because we change the encoder decoder with dual residual norm
 
-        self.linear_class = nn.Linear(hidden_dim, num_classes)
 
 
         self.dropout1 = nn.Dropout(dropout)
@@ -400,10 +407,22 @@ class SPOTER6(nn.Module):
             encoder_layer = [SPOTERTransformerEncoderLayer(
                 d_model=hidden_dim,
                 nhead=num_heads,
-                dim_feedforward=dim_feedforward_encoder//(i+1),
+                dim_feedforward=dim_feedforward_encoder,
+                dropout=dropout, 
+                activation="gelu"),
+                SPOTERTransformerEncoderLayer(
+                d_model=dim_feedforward_encoder,
+                nhead=num_heads,
+                dim_feedforward=dim_feedforward_encoder//2,
+                dropout=dropout, 
+                activation="gelu"),
+                SPOTERTransformerEncoderLayer(
+                d_model=dim_feedforward_encoder//2,
+                nhead=num_heads,
+                dim_feedforward=dim_feedforward_encoder//4,
                 dropout=dropout, 
                 activation="gelu")
-                for i in range(num_layers_1)
+
                 ],
             num_layers=num_layers_1,
             norm = None#self.layer_norm_encoder
@@ -413,12 +432,23 @@ class SPOTER6(nn.Module):
         self.decoder_gen = SPOTERTransformerDecoder(
             d_model=hidden_dim,
             decoder_layer  = [SPOTERTransformerDecoderLayer(
-                d_model=hidden_dim,
+                d_model=dim_feedforward_encoder//4,
                 nhead=num_heads,
-                dim_feedforward=dim_feedforward_decoder//(i+1),
+                dim_feedforward=dim_feedforward_decoder//2,
                 dropout=dropout, 
-                activation="gelu")
-                for i in range(num_layers_2)
+                activation="gelu"),
+                SPOTERTransformerDecoderLayer(
+                d_model=dim_feedforward_decoder//2,
+                nhead=num_heads,
+                dim_feedforward=dim_feedforward_decoder,
+                dropout=dropout, 
+                activation="gelu"),
+                SPOTERTransformerDecoderLayer(
+                d_model=dim_feedforward_decoder,
+                nhead=num_heads,
+                dim_feedforward=hidden_dim,
+                dropout=dropout, 
+                activation="gelu"),
                 ],
             num_layers=num_layers_2,
             norm = None#self.layer_norm_decoder
@@ -426,12 +456,23 @@ class SPOTER6(nn.Module):
         self.decoder_class = SPOTERTransformerDecoder(
             d_model=hidden_dim,
             decoder_layer = [SPOTERTransformerDecoderLayer(
-                d_model=hidden_dim,
-                nhead=3,
-                dim_feedforward=dim_feedforward_decoder//(i+1),
+                d_model=dim_feedforward_encoder//4,
+                nhead=num_heads,
+                dim_feedforward=dim_feedforward_decoder//2,
                 dropout=dropout, 
-                activation="gelu")
-                for i in range(num_layers_2)
+                activation="gelu"),
+                SPOTERTransformerDecoderLayer(
+                d_model=dim_feedforward_decoder//2,
+                nhead=num_heads,
+                dim_feedforward=dim_feedforward_decoder,
+                dropout=dropout, 
+                activation="gelu"),
+                SPOTERTransformerDecoderLayer(
+                d_model=dim_feedforward_decoder,
+                nhead=num_heads,
+                dim_feedforward=hidden_dim,
+                dropout=dropout, 
+                activation="gelu"),
                 ],
             num_layers=num_layers_2,
             norm = None#self.layer_norm_decoder
@@ -443,12 +484,14 @@ class SPOTER6(nn.Module):
 
         self.positional_encoder = PositionalEncoding(hidden_dim)
         self.positional_decoder = PositionalEncoding(hidden_dim)
-        
+
+        self.linear_class = nn.Linear(hidden_dim, num_classes)
+
         #self.ff_softmax = nn.Softmax(dim=1) # esto no se hace cuando se usa crossentropy loss
         self.cnt = 0
 
     def forward(self, inputs,show=False):
-        show= True if self.cnt==0 else False
+        show= False if self.cnt==0 else False
         self.cnt+=1
         print("") if show else None
         #inputs = inputs+0.5
@@ -476,8 +519,6 @@ class SPOTER6(nn.Module):
             print("self.positional_encoder(src):",src[2,:4],self.positional_encoder(src)[2,:4]) if show else None
 
         memory = self.encoder(self.positional_encoder(src))
-        #memory = self.encoder(src+self.pos)
-
         print("memory.shape",memory.shape)  if show else None# torch.Size([14, 108])
         print("memory:",memory[0,:4].tolist())  if show else None#[0.057049673050642014, -2.7947468757629395, -2.5759713649749756, -1.494513988494873]
         #generation = torch.sigmoid(self.decoder_gen(tgt, memory)) #encoder decoder generation: [0.19776038825511932, -3.6382975578308105, 1.1325629949569702, -0.1620892882347107]
@@ -504,7 +545,7 @@ class SPOTER6(nn.Module):
 if __name__ == "__main__":
     pass
 
-##tmux a -t session_02  python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=0 --dim_feedforward_decoder=1024 --dim_feedforward_encoder=512 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual_piramidal --num_heads=3 --num_layers_1=3 --num_layers_2=3 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="Gen6Piramidalv1NoLastNormGELU" --draw_points=0 --use_wandb=1 --resume=1 --scheduler_patience=200000
+##tmux a -t session_02  python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=0 --dim_feedforward_decoder=256 --dim_feedforward_encoder=256 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual_aeRD --num_heads=2 --num_layers_1=3 --num_layers_2=3 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="transformerAERD" --draw_points=0 --use_wandb=1 --resume=1 --scheduler_patience=200000
 
 """
 h.shape torch.Size([15, 1, 108])

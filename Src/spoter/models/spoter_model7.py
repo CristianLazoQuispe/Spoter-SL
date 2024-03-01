@@ -391,7 +391,7 @@ class SPOTER7(nn.Module):
 
 
         self.dropout1 = nn.Dropout(dropout)
-        self.act_relu = nn.ReLU()
+        self.act_relu = nn.GELU()
 
         self.layer_norm_encoder = nn.LayerNorm(hidden_dim, eps= 1e-5)
 
@@ -402,7 +402,7 @@ class SPOTER7(nn.Module):
                 nhead=num_heads,
                 dim_feedforward=dim_feedforward_encoder//(i+1),
                 dropout=dropout, 
-                activation="relu")
+                activation="gelu")
                 for i in range(num_layers_1)
                 ],
             num_layers=num_layers_1,
@@ -417,7 +417,7 @@ class SPOTER7(nn.Module):
                 nhead=num_heads,
                 dim_feedforward=dim_feedforward_decoder//(num_layers_2-i),
                 dropout=dropout, 
-                activation="relu")
+                activation="gelu")
                 for i in range(num_layers_2)
                 ],
             num_layers=num_layers_2,
@@ -430,7 +430,7 @@ class SPOTER7(nn.Module):
                 nhead=3,
                 dim_feedforward=dim_feedforward_decoder//(num_layers_2-i),
                 dropout=dropout, 
-                activation="relu")
+                activation="gelu")
                 for i in range(num_layers_2)
                 ],
             num_layers=num_layers_2,
@@ -438,7 +438,7 @@ class SPOTER7(nn.Module):
         )
         self.linear_class_1 = nn.Linear(hidden_dim, 64) # 64 to avoid overfitting because hidden_dim is 108
         self.linear_class_2 = nn.Linear(64,num_classes)
-        self.act_relu_2 = nn.ReLU()
+        self.act_relu_2 = nn.GELU()
         self.dropout2 = nn.Dropout(dropout)
 
         self.positional_encoder = PositionalEncoding(hidden_dim)
@@ -502,7 +502,7 @@ class SPOTER7(nn.Module):
 if __name__ == "__main__":
     pass
 
-##tmux a -t session_02  python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=2 --dim_feedforward_decoder=1024 --dim_feedforward_encoder=512 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual_ae --num_heads=3 --num_layers_1=3 --num_layers_2=3 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="v1gen7AE" --draw_points=0 --use_wandb=1 --resume=1
+##tmux a -t session_02  python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=3 --dim_feedforward_decoder=1024 --dim_feedforward_encoder=512 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual_ae --num_heads=3 --num_layers_1=3 --num_layers_2=3 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="Gen7AEv1NoLastNormGELU" --draw_points=0 --use_wandb=1 --resume=1 --scheduler_patience=200000
 
 """
 h.shape torch.Size([15, 1, 108])
