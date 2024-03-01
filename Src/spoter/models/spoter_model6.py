@@ -205,7 +205,7 @@ class SPOTERTransformerDecoderLayer(nn.TransformerDecoderLayer):
 
 class SPOTERTransformerEncoder(nn.TransformerEncoder):
     def __init__(self, d_model,encoder_layer, num_layers, norm=None, enable_nested_tensor=True, mask_check=True):
-        super(SPOTERTransformerEncoder, self).__init__(encoder_layer, num_layers, norm, enable_nested_tensor, mask_check)
+        super(SPOTERTransformerEncoder, self).__init__(encoder_layer[0], num_layers, norm, enable_nested_tensor, mask_check)
 
         self.layer_norm = nn.LayerNorm(d_model, eps= 1e-5)
 
@@ -278,7 +278,7 @@ class SPOTERTransformerEncoder(nn.TransformerEncoder):
 
 class SPOTERTransformerDecoder(nn.TransformerDecoder):
     def __init__(self, d_model,decoder_layer, num_layers, norm=None):
-        super(SPOTERTransformerDecoder, self).__init__(decoder_layer, num_layers,norm)
+        super(SPOTERTransformerDecoder, self).__init__(decoder_layer[0], num_layers,norm)
 
         self.layer_norm = nn.LayerNorm(d_model, eps= 1e-5)
 
@@ -364,7 +364,7 @@ class PositionalEncoding(nn.Module):
             print('**'*20)
         return x
     
-class SPOTER5(nn.Module):
+class SPOTER6(nn.Module):
     """
     Implementation of the SPOTER (Sign POse-based TransformER) architecture for sign language recognition from sequence
     of skeletal data.
@@ -373,7 +373,7 @@ class SPOTER5(nn.Module):
     def __init__(self, num_classes,hidden_dim=108, num_heads=3, num_layers_1=3, num_layers_2=3, 
                             dim_feedforward_encoder=1024,
                             dim_feedforward_decoder=2048,dropout=0.3):
-        super(SPOTER5,self).__init__()
+        super(SPOTER6,self).__init__()
 
         self.hidden_dim  = hidden_dim
         self.pos         = nn.Parameter(torch.rand(1,1, hidden_dim))
@@ -412,7 +412,7 @@ class SPOTER5(nn.Module):
 
         self.decoder_gen = SPOTERTransformerDecoder(
             d_model=hidden_dim,
-            decoder_layer  = [SPOTERTransformerEncoderLayer(
+            decoder_layer  = [SPOTERTransformerDecoderLayer(
                 d_model=hidden_dim,
                 nhead=num_heads,
                 dim_feedforward=dim_feedforward_decoder//(i+1),
@@ -425,7 +425,7 @@ class SPOTER5(nn.Module):
         )
         self.decoder_class = SPOTERTransformerDecoder(
             d_model=hidden_dim,
-            decoder_layer = [SPOTERTransformerEncoderLayer(
+            decoder_layer = [SPOTERTransformerDecoderLayer(
                 d_model=hidden_dim,
                 nhead=3,
                 dim_feedforward=dim_feedforward_decoder//(i+1),
@@ -502,23 +502,7 @@ class SPOTER5(nn.Module):
 if __name__ == "__main__":
     pass
 
-#python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=1 --dim_feedforward_decoder=1024 --dim_feedforward_encoder=256 --early_stopping_patience=1000 --epochs=1  --model_name=generative_class_residual --num_heads=2 --num_layers_1=3 --num_layers_2=2 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --use_wandb=0 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="f5-s95-p100v100-test-spoter5-1" --draw_points=1
-
-
-#max inputs: 0.333171927370131
-#min inputs: -0.2039239356527105
-#std inputs: 0.11107357715482585
-
-#python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=1 --dim_feedforward_decoder=2048 --dim_feedforward_encoder=256 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual --num_heads=2 --num_layers_1=3 --num_layers_2=2 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="v4gen test-onlyClassPos" --draw_points=0 --use_wandb=1 --resume=1
-
-#python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=1 --dim_feedforward_decoder=2048 --dim_feedforward_encoder=256 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual --num_heads=2 --num_layers_1=3 --num_layers_2=2 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="v4gen test-onlyClassPosSiRES1Shape" --draw_points=0 --use_wandb=0 --resume=1
-
-#python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=1 --dim_feedforward_decoder=2048 --dim_feedforward_encoder=256 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual --num_heads=9 --num_layers_1=1 --num_layers_2=1 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="v4gen test-onlyClassPosSiRES1Shape911" --draw_points=0 --use_wandb=1 --resume=1
-
-#python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=2 --dim_feedforward_decoder=2048 --dim_feedforward_encoder=256 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual --num_heads=2 --num_layers_1=3 --num_layers_2=2 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="v4gen test-onlyClassPosSiRES1Shape" --draw_points=0 --use_wandb=1 --resume=1
-
-
-#python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=2 --dim_feedforward_decoder=2048 --dim_feedforward_encoder=256 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual --num_heads=2 --num_layers_1=3 --num_layers_2=2 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="v4gen test-onlyClassPosSiRES1Shape" --draw_points=0 --use_wandb=1 --resume=1
+##tmux a -t session_02  python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=1 --dim_feedforward_decoder=1024 --dim_feedforward_encoder=512 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual_piramidal --num_heads=3 --num_layers_1=3 --num_layers_2=3 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="Gen6Piramidalv1" --draw_points=0 --use_wandb=1 --resume=1
 
 """
 h.shape torch.Size([15, 1, 108])

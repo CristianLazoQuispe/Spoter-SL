@@ -515,12 +515,11 @@ def train(args):
 
     if args.use_wandb:
         # Log the parameters to wandb
-        #wandb.config.update({
-        #    "total_parameters": total_params,
-        #    "trainable_parameters": trainable_params,
-        #    "trainable_parameters_ratio": ratio,
-        #    'allow_val_change':True,
-        #})
+        wandb.config.update({
+            "total_parameters": total_params,
+            "trainable_parameters": trainable_params,
+            "trainable_parameters_ratio": ratio,
+        })
 
         config = wandb.config
         #wandb.watch_called = False
@@ -572,20 +571,20 @@ def train(args):
         class_weight = torch.FloatTensor(factors).to(device)
         print("\\\\\\"*20)
         print("class_weight:",class_weight)
-        if args.model_name == "generative_class_residual":
+        if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae"]:
             cel_criterion = [None,None,None]
             cel_criterion[0] = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing, weight=class_weight)
 
         else:
             cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing, weight=class_weight)
     else:
-        if args.model_name == "generative_class_residual":
+        if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae"]:
             cel_criterion = [None,None,None]
             cel_criterion[0] = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)#, weight=class_weight)
         else:
             cel_criterion = nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)#, weight=class_weight)
     #cel_criterion = nn.CrossEntropyLoss()
-    if args.model_name == "generative_class_residual":
+    if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae"]:
         cel_criterion[1] = nn.MSELoss()
         cel_criterion[2] = KLDivergence()
 
@@ -622,9 +621,9 @@ def train(args):
     
     cnt_val_none = 0
     beta = 1
-
+    is_best = False
     for epoch in range(epoch_start, args.epochs+1):
-
+        is_best = False
         #sgd_optimizer = lr_lambda(epoch, sgd_optimizer)
         start_time = time.time()
 
@@ -711,7 +710,7 @@ def train(args):
 
             if val_f1_weighted > top_val_f1_weighted:
                 top_val_f1_weighted = val_f1_weighted
-
+                is_best = True
             current_weight_decay = sgd_optimizer.param_groups[0]['weight_decay']
             log_values = {
                 'current_lr':current_lr,
@@ -728,7 +727,7 @@ def train(args):
                 'total_time':total_time
             }
 
-            if args.model_name == "generative_class_residual":
+            if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae"]:
                 log_values['train_loss_gen'] = sum_loss_generation_train
                 log_values['train_loss_acc'] = sum_loss_classification_train
 
@@ -777,7 +776,7 @@ def train(args):
                         wandb.log({"gloss_val_video": wandb.Video(filename_val, format="gif")}, step=step)
                         #wandb.log({"val_video": wandb.Video(filename_val, fps=1,format="mp4")})
         #print("epoch:",epoch)
-        if args.model_name == "generative_class_residual":
+        if args.model_name in ["generative_class_residual","generative_class_residual_piramidal","generative_class_residual_ae"]:
             if epoch%100 == 0 or epoch ==1:
                 if len(list_maps_generation_train)>0 and len(list_maps_generation_val)>0:
                     list_images_gen_train,filename_gen_train = drawer.get_image_generation(list_maps_generation_train,suffix='train',save_image=True,folder = model_save_folder_path + "/")
@@ -833,8 +832,9 @@ def train(args):
 
                 }, model_save_folder_path + "/checkpoint_model.pth")
 
+            checkpoint_index += 1
 
-
+            if is_best:
                 print("Saving best model!")
                 print(model_save_folder_path)
 
@@ -870,11 +870,8 @@ def train(args):
 
                     }, model_save_folder_path + "/checkpoint_best_model.pth")
 
+
                 df_merged.to_csv(model_save_folder_path + "/df_merged_best.csv",index=False)
-
-                
-                checkpoint_index += 1
-
 
 
         if epoch%100 == 0:

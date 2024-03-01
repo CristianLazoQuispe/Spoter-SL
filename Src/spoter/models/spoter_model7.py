@@ -8,8 +8,11 @@ from typing import Dict, List, Optional, Tuple
 
 from torch.nn import functional as F
 
-def _get_clones(mod, n):
-    return nn.ModuleList([copy.deepcopy(mod) for _ in range(n)])
+def _get_clones(mod, n,is_list=False):
+    if is_list:
+        return nn.ModuleList(mod)
+    else:
+        return nn.ModuleList([copy.deepcopy(mod) for _ in range(n)])
 
 def _get_seq_len(
         src: Tensor,
@@ -202,11 +205,11 @@ class SPOTERTransformerDecoderLayer(nn.TransformerDecoderLayer):
 
 class SPOTERTransformerEncoder(nn.TransformerEncoder):
     def __init__(self, d_model,encoder_layer, num_layers, norm=None, enable_nested_tensor=True, mask_check=True):
-        super(SPOTERTransformerEncoder, self).__init__(encoder_layer, num_layers, norm, enable_nested_tensor, mask_check)
+        super(SPOTERTransformerEncoder, self).__init__(encoder_layer[0], num_layers, norm, enable_nested_tensor, mask_check)
 
         self.layer_norm = nn.LayerNorm(d_model, eps= 1e-5)
 
-        self.layers = _get_clones(encoder_layer, num_layers)
+        self.layers = _get_clones(encoder_layer, num_layers,is_list=True)
         self.norm  = norm
 
         #self.positional_encoder = PositionalEmbedding(200, d_model) # 200 maximo de frames
@@ -275,11 +278,11 @@ class SPOTERTransformerEncoder(nn.TransformerEncoder):
 
 class SPOTERTransformerDecoder(nn.TransformerDecoder):
     def __init__(self, d_model,decoder_layer, num_layers, norm=None):
-        super(SPOTERTransformerDecoder, self).__init__(decoder_layer, num_layers,norm)
+        super(SPOTERTransformerDecoder, self).__init__(decoder_layer[0], num_layers,norm)
 
         self.layer_norm = nn.LayerNorm(d_model, eps= 1e-5)
 
-        self.layers = _get_clones(decoder_layer, num_layers)
+        self.layers = _get_clones(decoder_layer, num_layers,is_list=True)
         self.norm  = norm
 
     def forward(self, tgt: Tensor, memory: Tensor, tgt_mask: Optional[Tensor] = None,
@@ -361,16 +364,16 @@ class PositionalEncoding(nn.Module):
             print('**'*20)
         return x
     
-class SPOTER5(nn.Module):
+class SPOTER7(nn.Module):
     """
     Implementation of the SPOTER (Sign POse-based TransformER) architecture for sign language recognition from sequence
     of skeletal data.
     """
 
-    def __init__(self, num_classes,hidden_dim=108, num_heads=9, num_layers_1=6, num_layers_2=6, 
-                            dim_feedforward_encoder=64,
-                            dim_feedforward_decoder=256,dropout=0.3):
-        super(SPOTER5,self).__init__()
+    def __init__(self, num_classes,hidden_dim=108, num_heads=3, num_layers_1=3, num_layers_2=3, 
+                            dim_feedforward_encoder=1024,
+                            dim_feedforward_decoder=2048,dropout=0.3):
+        super(SPOTER7,self).__init__()
 
         self.hidden_dim  = hidden_dim
         self.pos         = nn.Parameter(torch.rand(1,1, hidden_dim))
@@ -394,12 +397,14 @@ class SPOTER5(nn.Module):
 
         self.encoder = SPOTERTransformerEncoder(
             d_model=hidden_dim,
-            encoder_layer = SPOTERTransformerEncoderLayer(
+            encoder_layer = [SPOTERTransformerEncoderLayer(
                 d_model=hidden_dim,
                 nhead=num_heads,
-                dim_feedforward=dim_feedforward_encoder,
+                dim_feedforward=dim_feedforward_encoder//(i+1),
                 dropout=dropout, 
-                activation="relu"),
+                activation="relu")
+                for i in range(num_layers_1)
+                ],
             num_layers=num_layers_1,
             norm = self.layer_norm_encoder
         )
@@ -407,25 +412,27 @@ class SPOTER5(nn.Module):
 
         self.decoder_gen = SPOTERTransformerDecoder(
             d_model=hidden_dim,
-            decoder_layer = SPOTERTransformerDecoderLayer(
+            decoder_layer  = [SPOTERTransformerDecoderLayer(
                 d_model=hidden_dim,
                 nhead=num_heads,
-                dim_feedforward=dim_feedforward_decoder,
+                dim_feedforward=dim_feedforward_decoder//(num_layers_2-i),
                 dropout=dropout, 
-                activation="relu"),
+                activation="relu")
+                for i in range(num_layers_2)
+                ],
             num_layers=num_layers_2,
             norm = self.layer_norm_decoder
         )
-        self.decoder_gen.requires_grad_(False)
-
         self.decoder_class = SPOTERTransformerDecoder(
             d_model=hidden_dim,
-            decoder_layer = SPOTERTransformerDecoderLayer(
+            decoder_layer = [SPOTERTransformerDecoderLayer(
                 d_model=hidden_dim,
-                nhead=num_heads,
-                dim_feedforward=dim_feedforward_decoder,
+                nhead=3,
+                dim_feedforward=dim_feedforward_decoder//(num_layers_2-i),
                 dropout=dropout, 
-                activation="relu"),
+                activation="relu")
+                for i in range(num_layers_2)
+                ],
             num_layers=num_layers_2,
             norm = self.layer_norm_decoder
         )
@@ -495,10 +502,7 @@ class SPOTER5(nn.Module):
 if __name__ == "__main__":
     pass
 
-
-#tmux a -t session_01    python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=0 --dim_feedforward_decoder=2048 --dim_feedforward_encoder=256 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual --num_heads=9 --num_layers_1=1 --num_layers_2=1 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="v4gen test-onlyClassPosSiRES1Shape911" --draw_points=0 --use_wandb=1 --resume=1
-
-# interesante probar esto --dim_feedforward_decoder=1024 --dim_feedforward_encoder=512 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual --num_heads=3 --num_layers_1=3
+##tmux a -t session_02  python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=2 --dim_feedforward_decoder=1024 --dim_feedforward_encoder=512 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual_ae --num_heads=3 --num_layers_1=3 --num_layers_2=3 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="v1gen7AE" --draw_points=0 --use_wandb=1 --resume=1
 
 """
 h.shape torch.Size([15, 1, 108])
@@ -533,3 +537,4 @@ res.shape torch.Size([1, 38])
 
 """
 #datos
+
