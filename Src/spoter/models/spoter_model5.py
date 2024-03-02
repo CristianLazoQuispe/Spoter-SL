@@ -500,6 +500,7 @@ if __name__ == "__main__":
 
 # interesante probar esto --dim_feedforward_decoder=1024 --dim_feedforward_encoder=512 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual --num_heads=3 --num_layers_1=3
 
+
 """
 h.shape torch.Size([15, 1, 108])
 

@@ -303,7 +303,7 @@ def train(args):
                 v = 20000
             if k == "device":
                 v = 0
-            if k in ["resume","use_wandb"]:
+            if k in ["resume"]:
                 pass
             else:
                 key_parts.append(f"{k}_{v}")

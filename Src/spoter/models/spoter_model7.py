@@ -504,6 +504,7 @@ if __name__ == "__main__":
 
 ##tmux a -t session_02  python train.py --augmentation=0 --batch_size=64 --data_fold=5 --data_seed=95 --device=3 --dim_feedforward_decoder=1024 --dim_feedforward_encoder=512 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual_ae --num_heads=3 --num_layers_1=3 --num_layers_2=3 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="Gen7AEv1NoLastNormGELU" --draw_points=0 --use_wandb=1 --resume=1 --scheduler_patience=200000
 
+#python train.py --augmentation=0 --batch_size=32 --data_fold=5 --data_seed=95 --device=3 --dim_feedforward_decoder=2048 --dim_feedforward_encoder=256 --early_stopping_patience=1000 --epochs=20000  --model_name=generative_class_residual_ae --num_heads=2 --num_layers_1=3 --num_layers_2=3 --sweep=1 --training_set_path=../SL_ConnectingPoints/split/DGI305-AEC--38--incremental--mediapipe_n_folds_5_seed_95_klod_1-Train.hdf5 --validation_set_path= --weight_decay_dynamic=0 --experiment_name="v1gen7AE" --draw_points=0 --use_wandb=1 --resume=1
 """
 h.shape torch.Size([15, 1, 108])
 
